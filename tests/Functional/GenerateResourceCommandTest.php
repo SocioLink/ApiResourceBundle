@@ -190,6 +190,8 @@
 
 		public function testProviderIsWiredOnGet(): void {
 			$this->assertStringContainsString('new Get(provider: ArticleProvider::class)', self::src('Entity/Article.php'));
+			$this->assertStringContainsString('getSingleIdentifierFieldName()', self::src('State/Article/ArticleProvider.php'));
+			$this->assertStringNotContainsString("'e.id = :id'", self::src('State/Article/ArticleProvider.php'));
 			$this->assertStringContainsString("mercure: ['private' => true]", self::src('Entity/Article.php'));
 		}
 
@@ -242,6 +244,12 @@
 		public function testOnlyResourceGeneratesNoArtifact(): void {
 			$this->assertDirectoryDoesNotExist(self::$projectDir . '/src/DTO/Category');
 			$this->assertStringContainsString('new Post(),', self::src('Entity/Category.php'));
+		}
+
+		public function testUnrecognizedDoctrineTypeIsReportedAsAWarning(): void {
+			$this->assertSame(Command::SUCCESS, self::$runs['comment']['status']);
+			$this->assertStringContainsString('[WARNING] Types Doctrine non reconnus', self::$runs['comment']['display']);
+			$this->assertStringContainsString('binary', self::$runs['comment']['display']);
 		}
 
 		/* ── Modes sans écriture et erreurs ─── */

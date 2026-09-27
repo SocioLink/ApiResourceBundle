@@ -540,9 +540,7 @@
 
 				if ($addedUses !== []) {
 					$io->newLine(2);
-					array_map('trim', $addedUses)
-					|> (static fn($x) => implode("\n", $x))
-					|> $io(...);
+					$io->write(implode("\n", array_map('trim', $addedUses)));
 				}
 
 				$io->newLine();
@@ -959,6 +957,12 @@
 						$depth--;
 					}
 
+					continue;
+				}
+
+				/* `"{$x}"` et `"${x}"` ouvrent une accolade (token tableau) que referme une `}` simple. */
+				if ($token[0] === T_CURLY_OPEN || $token[0] === T_DOLLAR_OPEN_CURLY_BRACES) {
+					$depth++;
 					continue;
 				}
 

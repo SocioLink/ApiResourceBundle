@@ -8,3 +8,9 @@
 /.gitignore         export-ignore
 /phpstan.dist.neon  export-ignore
 /phpunit.xml.dist   export-ignore
+
+# Recette Flex (sources et dépôt compilé), documentation interne et fichiers d'agents : inutiles au projet hôte.
+/docs               export-ignore
+/flex               export-ignore
+/recipe             export-ignore
+/.agents            export-ignore

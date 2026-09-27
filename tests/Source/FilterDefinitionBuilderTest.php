@@ -33,8 +33,10 @@
     final class FilterDefinitionBuilderTest extends TestCase {
         /* ── Fabrique de champs ─── */
 
-        /*
+        /**
          * Fabrique le tableau de champs attendu par FilterDefinitionBuilder (format FieldAnalyser::getEntityFields()).
+         *
+         * @return array<string, mixed>
          */
         private function field(string $type, bool $nullable = false, bool $relation = false, bool $toMany = false): array {
             return [
@@ -43,8 +45,10 @@
             ];
         }
 
-        /*
+        /**
          * Jeu de champs couvrant chaque catégorie de la table de mapping.
+         *
+         * @return array<string, array<string, mixed>>
          */
         private function fields(): array {
             return [

@@ -16,12 +16,21 @@ d'API Platform, de Symfony et de Doctrine — et fonctionne donc en production s
 
 ## Prérequis
 
-|              | Minimum                                    |
-|--------------|--------------------------------------------|
-| PHP          | 8.5                                        |
-| Symfony      | 7.4 (compatible 7.4, 8.0, 8.1 et suivants) |
-| API Platform | 5.0                                        |
-| Doctrine ORM | 3.0                                        |
+|              | Minimum                                                                         |
+|--------------|---------------------------------------------------------------------------------|
+| PHP          | 8.5                                                                             |
+| Symfony      | 7.4 (compatible 7.4, 8.0, 8.1 et suivants)                                      |
+| API Platform | 5.0, composants `metadata`, `state`, `doctrine-orm` et `validator`              |
+| Doctrine     | ORM 3.5, DBAL 4.0                                                               |
+
+Le bundle dépend des **composants** d'API Platform, jamais du paquet monolithique `api-platform/core`.
+Il s'installe donc sans rien retirer, que le projet utilise les composants (`api-platform/symfony`,
+installation actuelle) ou `api-platform/core` (qui remplace ces composants). Les tests générés par
+`--with-tests` utilisent en plus `api-platform/test` (`ApiPlatform\Test\ApiTestCase`) :
+
+```bash
+composer require --dev api-platform/test
+```
 
 ## Installation
 
@@ -29,8 +38,41 @@ d'API Platform, de Symfony et de Doctrine — et fonctionne donc en production s
 composer require --dev sociolink/api-resource-bundle
 ```
 
-Le bundle n'est **pas** enregistré automatiquement (pas de recette Flex à ce stade). Ajoutez-le dans
-`config/bundles.php`, réservé aux environnements de développement :
+### Avec Symfony Flex
+
+Dans un projet utilisant **Symfony Flex** (tout projet créé avec `symfony new` ou `symfony/skeleton`),
+le bundle est enregistré automatiquement. Le paquet étant installé avec `--dev`, Flex le réserve aux
+environnements `dev` et `test`.
+
+Par défaut, Flex applique une recette **auto-générée**, qui enregistre le bundle sans créer de fichier
+de configuration (toutes les clés sont optionnelles, voir [Configuration](#configuration)) :
+
+```
+Configuring sociolink/api-resource-bundle (>=1.0): From auto-generated recipe
+```
+
+Le dépôt publie aussi sa **propre recette** (dossier `flex/`, compilé depuis `recipe/`), qui crée en
+plus `config/packages/sociolink_api_resource.yaml`, toutes les clés en commentaire avec leur valeur par
+défaut. Pour l'utiliser, déclarez ce dépôt de recettes dans le `composer.json` **du projet**, avant
+d'installer le bundle :
+
+```json
+"extra": {
+    "symfony": {
+        "endpoint": [
+            "https://api.github.com/repos/SocioLink/ApiResourceBundle/contents/flex/index.json",
+            "flex://defaults"
+        ]
+    }
+}
+```
+
+`flex://defaults` conserve les recettes officielles de Symfony pour les autres paquets. Composer
+affiche alors `From github.com/SocioLink/ApiResourceBundle:main`.
+
+### Sans Flex
+
+Ajoutez le bundle à la main dans `config/bundles.php` :
 
 ```php
 return [
@@ -223,7 +265,12 @@ noyau Symfony avec un EntityManager Doctrine réel, la commande est exécutée d
 chaque classe générée est chargée et chaque `#[ApiResource]` injecté est instancié avec API
 Platform. `SOCIOLINK_E2E_KEEP=1 composer test` conserve le projet généré pour inspection.
 
-CI GitHub Actions (`.github/workflows/ci.yml`) : PHP 8.5 × Symfony 7.4/8.0/8.1 × API Platform 5.0.
+Les tests de `tests/Recipe` vérifient aussi que le fichier de configuration de la recette Flex reprend
+exactement les valeurs par défaut, et que `flex/` correspond à la recompilation de `recipe/`
+(`php recipe/build.php`).
+
+CI GitHub Actions (`.github/workflows/ci.yml`) : PHP 8.5 × Symfony 7.4/8.0/8.1 avec les dépendances
+les plus récentes, plus une tâche avec les versions minimales de `composer.json` (`--prefer-lowest`).
 
 ## Portage depuis la commande de projet
 

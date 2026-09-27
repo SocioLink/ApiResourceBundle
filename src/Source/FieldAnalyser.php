@@ -192,7 +192,7 @@
 				Types::STRING, Types::TEXT, Types::ASCII_STRING, Types::DECIMAL,
 				Types::GUID                                             => 'string', /* guid est hydraté en chaîne par Doctrine */
 				Types::INTEGER, Types::SMALLINT, Types::BIGINT          => 'int',
-				Types::FLOAT, Types::SMALLFLOAT                         => 'float',
+				Types::FLOAT, 'smallfloat'                              => 'float', /* Types::SMALLFLOAT n'existe qu'à partir de DBAL 4.1 */
 				Types::BOOLEAN                                          => 'bool',
 				Types::DATETIME_MUTABLE, Types::DATETIME_IMMUTABLE,
 				Types::DATETIMETZ_MUTABLE, Types::DATETIMETZ_IMMUTABLE,

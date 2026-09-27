@@ -16,6 +16,10 @@ class Comment
     #[ORM\Column(type: 'text')]
     private string $body = '';
 
+    /* Type Doctrine sans correspondance dans le générateur : avertissement attendu, pas une erreur. */
+    #[ORM\Column(type: 'binary', nullable: true)]
+    private mixed $checksum = null;
+
     #[ORM\ManyToOne(targetEntity: Article::class, inversedBy: 'comments')]
     private ?Article $article = null;
 

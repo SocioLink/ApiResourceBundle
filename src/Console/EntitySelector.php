@@ -154,9 +154,7 @@
 			}
 
 			/* Dernière option : toutes les entités existantes. */
-			str_pad((string)$menu['allNumber'], $width, ' ', STR_PAD_LEFT)
-			|> (static fn($x) => sprintf('  [%s] <info>%s</info> — toutes les entités (%d)', $x, self::ALL_LABEL, $menu['total']))
-			|> $io(...);
+			$io->writeln(sprintf('  [%s] <info>%s</info> — toutes les entités (%d)', str_pad((string)$menu['allNumber'], $width, ' ', STR_PAD_LEFT), self::ALL_LABEL, $menu['total']));
 			$io->newLine();
 		}
 

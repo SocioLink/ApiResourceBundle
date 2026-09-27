@@ -25,6 +25,9 @@
 
 	use InvalidArgumentException;
 	use PHPUnit\Framework\TestCase;
+	use Symfony\Component\Console\Input\ArrayInput;
+	use Symfony\Component\Console\Style\SymfonyStyle;
+	use Symfony\Component\Console\Output\BufferedOutput;
 	use SocioLink\ApiResourceBundle\Console\EntitySelector;
 
 	/**
@@ -32,6 +35,7 @@
 	 * et l'analyse de la réponse saisie (numéro ou mot « All »).
 	 */
 	final class EntitySelectorTest extends TestCase {
+		/** @return list<string> */
 		private function entities(): array {
 			return [
 				'App\\Entity\\Blog\\Comment', 'App\\Entity\\Blog\\Article', 'App\\Entity\\User', 'App\\Entity\\Blog\\Article', /* doublon volontaire */
@@ -90,7 +94,7 @@
 					$this->fail("« $answer » aurait dû être rejeté");
 				}
 				catch (InvalidArgumentException) {
-					$this->assertTrue(true);
+					$this->addToAssertionCount(1);
 				}
 			}
 		}
@@ -118,5 +122,16 @@
 
 			$this->assertSame(1, $menu['total']);
 			$this->assertSame(2, $menu['allNumber']);
+		}
+		/* ── Affichage ─── */
+
+		public function testRenderListsGroupsEntitiesAndTheAllOptionLast(): void {
+			$selector = new EntitySelector();
+			$output   = new BufferedOutput();
+			$selector->render($selector->buildMenu($this->entities()), new SymfonyStyle(new ArrayInput([]), $output));
+			$text = str_replace(PHP_EOL, "\n", $output->fetch());
+
+			$this->assertStringContainsString("App\Entity\Blog\n  [2] Article\n  [3] Comment", $text);
+			$this->assertMatchesRegularExpression("/\[1\] User.*\[4\] All — toutes les entités \(3\)\s*$/su", $text);
 		}
 	}

@@ -229,9 +229,7 @@
 				$unrecognizedTypes = $this->fieldAnalyser->getUnrecognizedTypes();
 
 				if ($unrecognizedTypes !== []) {
-					implode(', ', $unrecognizedTypes)
-					|> (static fn($x) => sprintf('Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs.', $x))
-					|> $io(...);
+					$io->warning(sprintf('Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs.', implode(', ', $unrecognizedTypes)));
 				}
 
 				$this->fieldAnalyser->resetUnrecognizedTypes();

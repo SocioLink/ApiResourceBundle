@@ -29,7 +29,9 @@ final readonly class {{ entity_name }}Provider implements ProviderInterface
      */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        $id = $uriVariables['id'] ?? null;
+        /* Champ identifiant réel de l'entité (pas forcément « id ») : il nomme aussi la variable d'URI. */
+        $identifier = $this->em->getClassMetadata({{ entity_name }}::class)->getSingleIdentifierFieldName();
+        $id         = $uriVariables[$identifier] ?? null;
 
         if ($id === null) {
             throw new NotFoundHttpException('Identifiant manquant.');
@@ -44,7 +46,7 @@ final readonly class {{ entity_name }}Provider implements ProviderInterface
         $qb->leftJoin('e.{{ relation.field }}', '{{ relation.alias }}')->addSelect('{{ relation.alias }}');
 {% endfor %}
 
-        $entity = $qb->where('e.id = :id')
+        $entity = $qb->where(sprintf('e.%s = :id', $identifier))
             ->setParameter('id', $id)
             ->getQuery()
             ->getOneOrNullResult();

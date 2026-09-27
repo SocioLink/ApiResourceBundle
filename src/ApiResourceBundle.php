@@ -30,6 +30,8 @@
 	namespace SocioLink\ApiResourceBundle;
 
 	use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+	use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+	use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 	use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
 	use Symfony\Component\DependencyInjection\ContainerBuilder;
 	use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
@@ -63,8 +65,9 @@
 		 * `root_namespace` ; `tests.namespace` est absolu.
 		 */
 		public function configure(DefinitionConfigurator $definition): void {
-			$definition->rootNode()
-			           ->children()
+			/** @var ArrayNodeDefinition<TreeBuilder<'array'>> $root Typé NodeDefinition par Symfony 7.4.0. */
+			$root = $definition->rootNode();
+			$root->children()
 			           ->scalarNode('root_namespace')->defaultValue('App')->cannotBeEmpty()->info('Racine PSR-4 du projet.')->end()
 			           ->scalarNode('source_dir')->defaultValue('src')->cannotBeEmpty()->info('Dossier des sources, relatif au projet.')->end()
 			           ->scalarNode('entity_namespace')->defaultValue('Entity')->cannotBeEmpty()->info('Espace de noms des entités, relatif à root_namespace.')->end()

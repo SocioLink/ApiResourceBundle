@@ -73,6 +73,7 @@
 
 		/* ── Fabriques ─── */
 
+		/** @return array<string, mixed> */
 		private function field(string $type, bool $nullable = false, bool $relation = false, bool $toMany = false): array {
 			return [
 				'doctrineType' => $type, 'nullable' => $nullable, 'isRelation' => $relation,
@@ -80,6 +81,7 @@
 			];
 		}
 
+		/** @return array<string, array<string, mixed>> */
 		private function articleFields(): array {
 			return [
 				'id'        => $this->field('uuid'),
@@ -139,6 +141,7 @@
 PHP;
 		}
 
+		/** @param array<string, array<string, mixed>> $fields */
 		private function inject(string $name, array $fields, GenerationOptions $options): string {
 			return $this->injector->injectAttributesIntoEntity(
 				entityClass     : "App\\Entity\\{$name}", entityName: $name, fields: $fields,
@@ -147,6 +150,7 @@ PHP;
 			);
 		}
 
+		/** @param array<string, array<string, mixed>> $childFields */
 		private function injectSub(GenerationOptions $options, array $childFields): string {
 			return $this->injector->injectSubResourceAttributes(
 				parentClass: 'App\Entity\Article', parentName: 'Article', targetClass: 'App\Entity\Comment',
@@ -177,6 +181,20 @@ PHP;
 			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\SortFilter;', $source);
 			$this->assertStringNotContainsString('ApiFilter', $source);
 			$this->assertSame(1, substr_count($source, '#[ApiResource('));
+		}
+
+		public function testImportsStayAtTheRootAfterAnInterpolationFollowedByAClosureUse(): void {
+			/* `"{$…}"` referme une accolade qu'il ouvre lui-même : sans suivi, le `use` de la closure passerait pour un import racine. */
+			$path = $this->writeEntity('Article', "<?php\n\n    namespace App\\Entity;\n\n    use Doctrine\\ORM\\Mapping as ORM;\n\n"
+			                                      . "    #[ORM\\Entity]\n    final class Article {\n        private string \$name = '';\n\n"
+			                                      . "        public function __toString(): string { return \"{\$this->name} \${name}\"; }\n\n"
+			                                      . "        public function sorter(): callable { \$a = 1; return function () use (\$a) { return \$a; }; }\n    }\n");
+			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags());
+			$source = (string)file_get_contents($path);
+
+			$this->assertValidPhp($path);
+			$this->assertStringContainsString("use Doctrine\\ORM\\Mapping as ORM;\n    use ApiPlatform\\", $source);
+			$this->assertStringContainsString('return function () use ($a) { return $a; };', $source);
 		}
 
 		public function testEntityWithoutFilterableFieldKeepsCompactOperationsLine(): void {

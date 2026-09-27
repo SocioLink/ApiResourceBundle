@@ -34,6 +34,7 @@
      * --public sans --with-mercure, et la construction normale des options.
      */
     final class GenerationOptionsFactoryTest extends TestCase {
+        /** @param array<string, mixed> $options */
         private function input(array $options): ArrayInput {
             $definition = new InputDefinition();
 
