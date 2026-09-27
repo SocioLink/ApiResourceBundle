@@ -1,10 +1,27 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 22/08/2026 14:12
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Générateur des DTOs (Create, Update, Toggle, booléens individuels, Upload).
+	 * Creation Date: 22/08/2026 14:12
+	 *
+	 * Description: Générateur du code source des Data Transfer Objects (DTOs) utilisés en entrée des opérations API
+	 *              Platform.
+	 *              CreateDto (POST) : champs non système, nullabilité réelle de l'entité. UpdateDto (PATCH partiel) :
+	 *              propriétés nullables où null signifie « non envoyé » ; NotBlank y accepte null et NotNull en est retiré.
+	 *              ToggleDto (--toggle-boolean) : tous les booléens. DTO par booléen (--detach-boolean) et DTO d'upload
+	 *              VichUploader.
+	 *              Les contraintes #[Assert\*] déclarées sur l'entité sont recopiées attribut par attribut, avec leurs
+	 *              dépendances : self:: est réécrit en NomEntité::, et les classes et alias référencés (ex. use … as
+	 *              AssertPhone) sont importés. Les associations ToMany ne sont jamais exposées, et les imports
+	 *              DateTimeImmutable, Uuid et Assert ne sont ajoutés que s'ils sont utilisés.
 	 */
 
 	declare(strict_types=1);
@@ -47,9 +64,9 @@
 		 * @param Environment       $twig              Moteur de gabarits Twig dédié du bundle
 		 */
 		public function __construct(
-			private readonly NamespaceResolver                                                 $namespaceResolver,
-			private readonly FieldAnalyser                                                     $fieldAnalyser,
-			private readonly GeneratorConfig                                                   $config,
+			private readonly NamespaceResolver                                               $namespaceResolver,
+			private readonly FieldAnalyser                                                   $fieldAnalyser,
+			private readonly GeneratorConfig                                                 $config,
 			#[Autowire(service: 'sociolink_api_resource.twig')] private readonly Environment $twig,
 		) {}
 
@@ -306,7 +323,7 @@
 				$uses[] = 'use ' . $entityClass . ';';
 			}
 
-			$usesBlock = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid);
+			$usesBlock  = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid);
 			$propsBlock = rtrim(implode("\n", $props));
 
 			$softNote = $options->includesSoftDeleteInUpdate()

@@ -1,10 +1,24 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Découverte et validation des entités Doctrine du projet.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Découverte et validation des entités Doctrine du projet (implémentation de EntityDiscoveryInterface).
+	 *              resolveEntityArgument() convertit l'argument de la commande (nom court, sous-espace « Blog\Article » ou
+	 *              FQCN, avec ou sans antislash initial) en FQCN, puis vérifie que la classe existe et possède un mapping
+	 *              Doctrine.
+	 *              discoverAllEntities() parcourt récursivement le dossier des entités déduit de GeneratorConfig, convertit
+	 *              chaque fichier en FQCN, ignore les classes non chargeables, non mappées, les superclasses mappées et les
+	 *              embarquables, puis retourne la liste triée.
 	 */
 
 	declare(strict_types=1);

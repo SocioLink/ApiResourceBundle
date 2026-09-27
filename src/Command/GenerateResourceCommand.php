@@ -1,10 +1,28 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Commande Symfony CLI generate:resource — génération automatique des ressources API Platform.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Commande CLI generate:resource (alias sociolink:api-resource:generate, g:r, gen:resource…) : point
+	 *              d'entrée utilisateur de la génération des ressources API Platform.
+	 *              Sélection des entités : un nom court ou un FQCN traite une entité ; « * » les traite toutes sans menu
+	 *              (CI) ; sans argument, un menu numéroté s'affiche dans un terminal et la commande échoue explicitement
+	 *              hors terminal, sans jamais traiter implicitement toutes les entités.
+	 *              La commande ne fait que de l'orchestration : validation des options (GenerationOptionsFactory), menu
+	 *              (EntitySelector), nettoyage --reinit confirmé et limité aux entités traitées, barre de progression,
+	 *              génération par entité (ResourceGeneratorInterface), signalement des types Doctrine non reconnus et
+	 *              résumé (SummaryPrinter).
+	 *              Code de sortie : 0 si toutes les entités ont été traitées, 1 si une option est invalide, si une entité
+	 *              est introuvable ou si au moins une génération a échoué (les autres entités sont tout de même traitées).
 	 */
 
 	declare(strict_types=1);

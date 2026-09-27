@@ -1,10 +1,22 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 27/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Noyau Symfony minimal (FrameworkBundle + ApiResourceBundle) pour les tests de bout en bout.
+	 * Creation Date: 27/09/2026
+	 *
+	 * Description: Noyau Symfony minimal des tests de bout en bout : FrameworkBundle et ApiResourceBundle, tels qu'un
+	 *              projet les enregistre.
+	 *              Reçoit la configuration sociolink_api_resource du test, place cache et journaux dans le projet
+	 *              temporaire et déclare un EntityManager Doctrine réel (mapping par attributs, SQLite en mémoire, objets
+	 *              paresseux natifs) : la génération ne lisant que les métadonnées, aucune requête n'est exécutée.
 	 */
 
 	declare(strict_types=1);

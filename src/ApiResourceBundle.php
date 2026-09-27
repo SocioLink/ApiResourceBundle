@@ -1,10 +1,28 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Bundle Symfony SocioLink\ApiResourceBundle (outil de développement).
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Point d'entrée du bundle Symfony SocioLink\ApiResourceBundle, outil de DÉVELOPPEMENT qui génère les
+	 *              ressources API Platform (DTOs, State Processors et Providers, paramètres #[QueryParameter], tests
+	 *              fonctionnels) à partir des entités Doctrine.
+	 *              Déclare l'arbre de configuration `sociolink_api_resource` (espaces de noms et dossiers du projet,
+	 *              dossier et espace de noms des tests, rôle d'administration, champs système des DTOs, booléens
+	 *              soft-delete/soft-erase, réglages des filtres, dossier de surcharge des gabarits) ; toutes les clés sont
+	 *              optionnelles et reproduisent par défaut les conventions d'une application Symfony standard (App\ dans
+	 *              src/).
+	 *              loadExtension() transforme cette configuration en service GeneratorConfig puis importe
+	 *              config/services.php. Enregistré uniquement pour les environnements dev et test : le code généré ne
+	 *              référence jamais le bundle.
 	 */
 
 	declare(strict_types=1);
@@ -12,8 +30,8 @@
 	namespace SocioLink\ApiResourceBundle;
 
 	use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-	use Symfony\Component\DependencyInjection\ContainerBuilder;
 	use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
+	use Symfony\Component\DependencyInjection\ContainerBuilder;
 	use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 	use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 

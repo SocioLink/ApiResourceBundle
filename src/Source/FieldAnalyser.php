@@ -1,10 +1,26 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 27/08/2026 12:50
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Analyse les champs d'une entité Doctrine ORM.
+	 * Creation Date: 27/08/2026 12:50
+	 *
+	 * Description: Analyse des champs d'une entité Doctrine ORM et de son code source, pour alimenter tous les générateurs.
+	 *              getEntityFields() normalise les champs scalaires (type, nullabilité, longueur, valeurs des énumérations
+	 *              backed) et les associations (cible, ToMany, OneToMany, mappedBy, nullabilité des colonnes de jointure) à
+	 *              partir du seul mapping Doctrine : attributs, XML et propriétés héritées sont pris en charge. toPhpType()
+	 *              convertit les types Doctrine en types PHP et mémorise les types non reconnus.
+	 *              Par analyse AST (nikic/php-parser), extrait les contraintes #[Assert\*] propriété par propriété et les
+	 *              imports de l'entité (imports groupés et classes du même dossier compris), et détecte les champs
+	 *              #[UploadableField] de VichUploader, par réflexion si le bundle est installé, sinon depuis le code
+	 *              source.
 	 */
 
 	declare(strict_types=1);
@@ -13,12 +29,12 @@
 
 	use Throwable;
 	use PhpParser\Node;
-	use ReflectionClass;
 	use ReflectionEnum;
-	use ReflectionAttribute;
+	use ReflectionClass;
 	use PhpParser\Parser;
-	use PhpParser\ParserFactory;
+	use ReflectionAttribute;
 	use PhpParser\NodeFinder;
+	use PhpParser\ParserFactory;
 	use Doctrine\DBAL\Types\Types;
 	use PhpParser\PrettyPrinter\Standard;
 	use Doctrine\ORM\Mapping\ClassMetadata;
@@ -173,24 +189,24 @@
 		public function toPhpType(string $doctrineType): string {
 			$type = match ($doctrineType) {
 				Types::STRING, Types::TEXT, Types::ASCII_STRING, Types::DECIMAL,
-				Types::GUID                                                     => 'string', /* guid est hydraté en chaîne par Doctrine */
+				Types::GUID                                             => 'string', /* guid est hydraté en chaîne par Doctrine */
 
-				Types::INTEGER, Types::SMALLINT, Types::BIGINT                  => 'int',
+				Types::INTEGER, Types::SMALLINT, Types::BIGINT          => 'int',
 
-				Types::FLOAT, Types::SMALLFLOAT                                 => 'float',
+				Types::FLOAT, Types::SMALLFLOAT                         => 'float',
 
-				Types::BOOLEAN                                                  => 'bool',
+				Types::BOOLEAN                                          => 'bool',
 
 				Types::DATETIME_MUTABLE, Types::DATETIME_IMMUTABLE,
 				Types::DATETIMETZ_MUTABLE, Types::DATETIMETZ_IMMUTABLE,
 				Types::DATE_MUTABLE, Types::DATE_IMMUTABLE,
-				Types::TIME_MUTABLE, Types::TIME_IMMUTABLE                      => 'DateTimeImmutable',
+				Types::TIME_MUTABLE, Types::TIME_IMMUTABLE              => 'DateTimeImmutable',
 
-				'uuid', 'uuid_binary'                                           => 'Uuid', /* types symfony/doctrine-bridge */
+				'uuid', 'uuid_binary'                                   => 'Uuid', /* types symfony/doctrine-bridge */
 
-				Types::JSON, Types::SIMPLE_ARRAY, 'json_array', 'array'         => 'array',
+				Types::JSON, Types::SIMPLE_ARRAY, 'json_array', 'array' => 'array',
 
-				default                                                         => null,
+				default                                                 => null,
 			};
 
 			if ($type !== null) {
@@ -261,7 +277,7 @@
 			$namespace = $pos === false ? '' : substr($entityClass, 0, $pos);
 
 			foreach (glob(dirname($this->namespaceResolver->entityFilePath($entityClass)) . '/*.php') ?: [] as $file) {
-				$className          = basename($file, '.php');
+				$className        = basename($file, '.php');
 				$uses[$className] ??= $namespace !== '' ? $namespace . '\\' . $className : $className;
 			}
 

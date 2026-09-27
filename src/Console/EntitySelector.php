@@ -1,10 +1,26 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Menu interactif numéroté de sélection d'une entité, regroupé par namespace.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Menu interactif de sélection de l'entité à traiter, affiché par generate:resource lorsqu'aucune entité
+	 *              n'est indiquée dans un terminal.
+	 *              Les entités sont regroupées par espace de noms (ordre alphabétique), triées par nom court et numérotées
+	 *              en continu ; la dernière option, « All », désigne toutes les entités. Le choix est unique ; la réponse
+	 *              peut être un numéro ou le mot « All » (sans tenir compte de la casse), et une saisie invalide est
+	 *              redemandée.
+	 *              La construction du menu (buildMenu), l'analyse de la réponse (parseAnswer) et la résolution du choix
+	 *              (entityForNumber) sont des fonctions pures, testables sans terminal ; seules render() et choose()
+	 *              dialoguent avec l'utilisateur.
 	 */
 
 	declare(strict_types=1);

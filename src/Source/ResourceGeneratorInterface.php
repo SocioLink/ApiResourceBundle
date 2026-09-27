@@ -1,10 +1,21 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Contrat de l'orchestrateur de génération des artefacts d'une entité.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Contrat de l'orchestrateur de génération : traitement complet d'une entité et nettoyage préalable
+	 *              --reinit.
+	 *              La commande dépend de ce contrat plutôt que de GenerateResourceService, ce qui permet de tester le menu,
+	 *              la validation des options et le flux de la commande sans base de données ni écriture disque.
 	 */
 
 	declare(strict_types=1);

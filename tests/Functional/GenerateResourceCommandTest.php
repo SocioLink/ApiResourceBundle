@@ -1,10 +1,25 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 27/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Test de bout en bout : le bundle dans un noyau Symfony, la commande sur de vraies entités Doctrine.
+	 * Creation Date: 27/09/2026
+	 *
+	 * Description: Test de bout en bout du bundle : enregistrement dans un noyau Symfony, exécution de generate:resource
+	 *              sur de vraies entités Doctrine d'un projet temporaire.
+	 *              Scénarios : --with-provider --with-tests --sub-resources --with-mercure --graphql-filters,
+	 *              --toggle-boolean, --detach-boolean, --only-resource, --force --reinit, --dry-run sur toutes les entités,
+	 *              ainsi que les cas d'échec (argument absent hors terminal, entité inconnue, options incompatibles).
+	 *              Chaque classe générée est chargée (syntaxe, imports, signatures des interfaces API Platform) et mise en
+	 *              forme contrôlée ; chaque #[ApiResource] injecté est instancié avec les classes réelles d'API Platform.
+	 *              SOCIOLINK_E2E_KEEP=1 conserve le projet généré pour inspection.
 	 */
 
 	declare(strict_types=1);

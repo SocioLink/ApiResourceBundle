@@ -1,10 +1,23 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Tests d'intégration de l'injecteur d'attributs (fichiers d'entité réels dans un dossier temporaire).
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Tests d'intégration de l'injecteur d'attributs (EntityAttributeInjector) sur de vrais fichiers d'entité
+	 *              écrits dans un dossier temporaire.
+	 *              Couvrent le rendu des paramètres #[QueryParameter], le placement et l'indentation du bloc, les options
+	 *              GraphQL et Mercure, les modes sans écriture, la migration des entités portant d'anciens #[ApiFilter] (y
+	 *              compris des parenthèses dans les chaînes), l'idempotence, les fins de ligne CRLF, les sous-ressources et
+	 *              la conservation des éléments écrits à la main.
 	 */
 
 	declare(strict_types=1);

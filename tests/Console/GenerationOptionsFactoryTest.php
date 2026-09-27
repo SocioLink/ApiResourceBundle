@@ -1,10 +1,21 @@
 <?php
 
     /*
-     * Copyright (c) 2026.
-     * Date: 21/09/2026
+     * Copyright (c) 2026, Xavier KONGOLO.
+     * All rights reserved.
+     *
+     * This source code is proprietary and confidential.
+     * Unauthorized copying, distribution, modification, publication,
+     * or use of this source code, in whole or in part, is strictly prohibited
+     * without the prior written authorization of the copyright owner.
+     *
      * Author: Xavier KONGOLO <xsompwe@gmail.com>
-     * Description: Tests unitaires de la validation des options de la commande (GenerationOptionsFactory).
+     * Creation Date: 21/09/2026
+     *
+     * Description: Tests unitaires de la validation des options de generate:resource (GenerationOptionsFactory).
+     *              Vérifient le rejet des options de mode combinées, de --reinit sans --force et de --public sans
+     *              --with-mercure, l'acceptation des combinaisons valides (--force --reinit, --with-mercure avec ou sans
+     *              --public) et les valeurs par défaut sans option.
      */
 
     declare(strict_types=1);

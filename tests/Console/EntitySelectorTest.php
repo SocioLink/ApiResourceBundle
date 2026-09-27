@@ -1,10 +1,22 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
+	 * Creation Date: 21/09/2026
+	 *
 	 * Description: Tests unitaires du menu interactif de sélection d'entité (EntitySelector).
+	 *              Vérifient le regroupement par espace de noms et le tri par nom court, la numérotation continue entre
+	 *              groupes, l'option « All » en dernière position, la suppression des doublons, l'analyse de la réponse
+	 *              (numéro, mot « All » sans tenir compte de la casse, rejet des saisies hors bornes ou non numériques) et
+	 *              la résolution d'un numéro en FQCN.
 	 */
 
 	declare(strict_types=1);

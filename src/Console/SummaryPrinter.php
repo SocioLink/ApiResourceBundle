@@ -1,10 +1,24 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Résumé console de l'exécution de la commande generate:resource.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Affichage du résumé de fin d'exécution de generate:resource, extrait de la commande pour qu'elle reste
+	 *              de l'orchestration pure.
+	 *              Agrège les résultats de chaque entité (fichiers créés, ignorés faute de --force, entités modifiées,
+	 *              erreurs, champs booléens et champs d'upload détectés), rappelle le mode et les options actives (tests,
+	 *              sous-ressources, GraphQL, Mercure) et adapte l'en-tête : succès, aperçu sans écriture ou avertissement
+	 *              en cas d'erreur.
+	 *              Retourne le nombre d'erreurs, dont la commande déduit son code de sortie.
 	 */
 
 	declare(strict_types=1);

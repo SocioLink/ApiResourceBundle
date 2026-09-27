@@ -1,10 +1,22 @@
 <?php
 
     /*
-     * Copyright (c) 2026.
-     * Date: 21/09/2026
+     * Copyright (c) 2026, Xavier KONGOLO.
+     * All rights reserved.
+     *
+     * This source code is proprietary and confidential.
+     * Unauthorized copying, distribution, modification, publication,
+     * or use of this source code, in whole or in part, is strictly prohibited
+     * without the prior written authorization of the copyright owner.
+     *
      * Author: Xavier KONGOLO <xsompwe@gmail.com>
+     * Creation Date: 21/09/2026
+     *
      * Description: Tests unitaires de la classification des filtres (FilterDefinitionBuilder).
+     *              Vérifient le filtre attribué à chaque catégorie de champ, l'exclusion des types non filtrables, le
+     *              regroupement ExistsFilter et SortFilter, la validité syntaxique et le caractère explicite (property /
+     *              properties) du code rendu, les imports requis et les exemples de requêtes utilisés par les tests
+     *              générés.
      */
 
     declare(strict_types=1);

@@ -15,6 +15,6 @@
 
 # IDE et agents
 /.idea/
-/.vscode/
-/.agents/
 /agents/
+/.agents/
+/.vscode/

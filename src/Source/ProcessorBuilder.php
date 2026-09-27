@@ -1,10 +1,24 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 27/08/2026 12:50
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Générateur de State Processors pour API Platform.
+	 * Creation Date: 27/08/2026 12:50
+	 *
+	 * Description: Générateur du code source des State Processors API Platform associés aux DTOs générés.
+	 *              Create : instancie l'entité depuis le CreateDto, la valide puis délègue la persistance au processor
+	 *              Doctrine. Update : charge l'entité (UUID pris en charge) et n'applique que les valeurs non nulles.
+	 *              Toggle et bascule par booléen : mêmes principes, avec la logique soft-delete/soft-erase (restauration
+	 *              réservée à l'auteur de la suppression, levée d'un effacement réservée au rôle d'administration). Upload
+	 *              : validation du fichier multipart par le DTO puis affectation via le setter de l'entité.
+	 *              Les imports sont centralisés, dédupliqués et triés ; le rendu est délégué aux gabarits Twig du bundle.
 	 */
 
 	declare(strict_types=1);
@@ -58,15 +72,15 @@
 			return $this->twig->render('create_processor.php.twig', [
 				'namespace'   => $stateNs,
 				'uses_block'  => $this->usesBlock([
-					'ApiPlatform\Metadata\Operation',
-					'ApiPlatform\State\ProcessorInterface',
-					'ApiPlatform\Validator\Exception\ValidationException as ApiValidationException',
-					'ReflectionObject',
-					'Symfony\Component\DependencyInjection\Attribute\Autowire',
-					'Symfony\Component\Validator\Validator\ValidatorInterface',
-					$entityClass,
-					"{$dtoNs}\\{$entityName}CreateDto",
-				]),
+					                                  'ApiPlatform\Metadata\Operation',
+					                                  'ApiPlatform\State\ProcessorInterface',
+					                                  'ApiPlatform\Validator\Exception\ValidationException as ApiValidationException',
+					                                  'ReflectionObject',
+					                                  'Symfony\Component\DependencyInjection\Attribute\Autowire',
+					                                  'Symfony\Component\Validator\Validator\ValidatorInterface',
+					                                  $entityClass,
+					                                  "{$dtoNs}\\{$entityName}CreateDto",
+				                                  ]),
 				'entity_name' => $entityName,
 			]);
 		}

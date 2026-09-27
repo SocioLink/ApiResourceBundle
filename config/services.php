@@ -1,10 +1,28 @@
 <?php
 
 	/*
-	 * Copyright (c) 2026.
-	 * Date: 21/09/2026
+	 * Copyright (c) 2026, Xavier KONGOLO.
+	 * All rights reserved.
+	 *
+	 * This source code is proprietary and confidential.
+	 * Unauthorized copying, distribution, modification, publication,
+	 * or use of this source code, in whole or in part, is strictly prohibited
+	 * without the prior written authorization of the copyright owner.
+	 *
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
-	 * Description: Services du bundle SocioLink\ApiResourceBundle.
+	 * Creation Date: 21/09/2026
+	 *
+	 * Description: Déclaration des services du bundle SocioLink\ApiResourceBundle, importée par
+	 *              ApiResourceBundle::loadExtension().
+	 *              La liste des services est EXPLICITE (aucun chargement par glob) pour ne jamais enregistrer par mégarde
+	 *              une classe utilitaire ou un objet de valeur : analyseurs (FieldAnalyser, FilterDefinitionBuilder,
+	 *              NamespaceResolver), générateurs (DtoBuilder, ProcessorBuilder, ProviderBuilder, TestBuilder), injecteur
+	 *              d'attributs, découverte des entités, orchestrateur et services console (fabrique d'options, menu,
+	 *              résumé).
+	 *              Tous les services sont privés et autowirés ; les contrats ResourceGeneratorInterface et
+	 *              EntityDiscoveryInterface sont résolus vers leur unique implémentation. Le moteur Twig dédié
+	 *              (sociolink_api_resource.twig) est construit par TwigEnvironmentFactory ; seule la commande est
+	 *              autoconfigurée (tag console.command déduit de #[AsCommand]).
 	 */
 
 	declare(strict_types=1);
