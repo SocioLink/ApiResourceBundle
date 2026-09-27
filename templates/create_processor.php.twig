@@ -1,0 +1,61 @@
+<?php
+
+namespace {{ namespace }};
+{{ uses_block | raw }}
+
+/**
+ * Processor de création pour l'entité {{ entity_name }} — opération POST.
+ *
+ * Reçoit un {{ entity_name }}CreateDto désérialisé, instancie une nouvelle entité
+ * et délègue sa persistance au processor Doctrine interne.
+ *
+ * @implements ProcessorInterface<{{ entity_name }}CreateDto, {{ entity_name }}>
+*
+* @see {{ entity_name }}CreateDto
+*/
+readonly class {{ entity_name }}CreateProcessor implements ProcessorInterface
+{
+public function __construct(
+#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
+private ProcessorInterface $persistProcessor,
+private ValidatorInterface $validator
+) {}
+
+/**
+* @param {{ entity_name }}CreateDto   $data         Données/Objet transmis
+* @param Operation                    $operation    Nature de la requête (POST|PATCH)
+* @param array|string|mixed           $uriVariables Variables de l'URL
+* @param array|string|mixed           $context      Contexte de la requête ApiPlatform
+*
+* @return {{ entity_name }}
+*
+* @throws \InvalidArgumentException si les données ne sont pas du bon type
+* @throws ApiValidationException    si la validation échoue
+*/
+final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+{
+if (!($data instanceof {{ entity_name }}CreateDto)) {
+throw new \InvalidArgumentException(sprintf('Données invalides : %s attendu, %s reçu.', {{ entity_name }}CreateDto::class, get_debug_type($data)));
+}
+
+$entity = new {{ entity_name }}();
+
+foreach (new ReflectionObject($data)->getProperties() as $property) {
+$name   = $property->getName();
+$value  = $property->getValue($data);
+$setter = 'set' . ucfirst($name);
+
+if (method_exists($entity, $setter)) {
+$entity->$setter($value);
+}
+}
+
+$errors = $this->validator->validate($entity);
+
+if (count($errors) > 0) {
+throw new ApiValidationException($errors);
+}
+
+return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
+}
+}

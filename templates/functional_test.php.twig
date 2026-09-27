@@ -1,0 +1,153 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+{{ uses_block | raw }}
+
+/**
+ * Tests fonctionnels pour l'API {{ entity_name }}.
+ *
+ * Couvre :
+ *  - GET   /api/{{ uri_base }}        (collection)
+ *  - POST  /api/{{ uri_base }}        (création, données valides puis invalides)
+ *  - PATCH /api/{{ uri_base }}/{id}   (mise à jour partielle)
+ *  - GET   /api/{{ uri_base }}/{id}   (lecture unitaire)
+{% if valid_filters or invalid_filters %}
+ *  - GET   /api/{{ uri_base }}?...    (paramètres de filtrage et de tri générés)
+{% endif %}
+ *
+ * Nécessite le paquet api-platform/test (API Platform 5.0).
+ */
+final class {{ entity_name }}ApiTest extends ApiTestCase
+{
+    public function testGetCollection(): void
+    {
+        static::createClient()->request('GET', '/api/{{ uri_base }}');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
+    }
+
+    public function testCreate(): void
+    {
+        static::createClient()->request('POST', '/api/{{ uri_base }}', [
+            'json' => [
+{% for field in required_fields %}
+                '{{ field.name | raw }}' => {{ field.value | raw }},
+{% endfor %}
+            ],
+        ]);
+
+        $this->assertResponseStatusCodeSame(201);
+        $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
+        $this->assertJsonContains(['@type' => '{{ entity_name }}']);
+    }
+
+    public function testCreateWithInvalidData(): void
+    {
+        static::createClient()->request('POST', '/api/{{ uri_base }}', [
+            'json' => [],
+        ]);
+
+        $this->assertResponseStatusCodeSame(422);
+    }
+
+    public function testUpdate(): void
+    {
+        $client   = static::createClient();
+        $response = $client->request('POST', '/api/{{ uri_base }}', [
+            'json' => [
+{% for field in required_fields %}
+                '{{ field.name | raw }}' => {{ field.value | raw }},
+{% endfor %}
+            ],
+        ]);
+
+        $this->assertResponseStatusCodeSame(201);
+
+        $iri = $response->toArray()['@id'];
+        $this->assertNotEmpty($iri);
+
+        $client->request('PATCH', $iri, [
+            'json'    => [],
+            'headers' => ['Content-Type' => 'application/merge-patch+json'],
+        ]);
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testGetItem(): void
+    {
+        $client   = static::createClient();
+        $response = $client->request('POST', '/api/{{ uri_base }}', [
+            'json' => [
+{% for field in required_fields %}
+                '{{ field.name | raw }}' => {{ field.value | raw }},
+{% endfor %}
+            ],
+        ]);
+
+        $this->assertResponseStatusCodeSame(201);
+
+        $iri = $response->toArray()['@id'];
+        $this->assertNotEmpty($iri);
+
+        $client->request('GET', $iri);
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
+    }
+{% if valid_filters %}
+
+    /**
+     * Les requêtes de filtrage et de tri générées sont acceptées (200).
+     *
+     * @param array<string, mixed> $query
+     */
+    #[DataProvider('validFilterProvider')]
+    public function testFilterIsAccepted(array $query): void
+    {
+        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => $query]);
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function validFilterProvider(): iterable
+    {
+{% for row in valid_filters %}
+        yield '{{ row.label | raw }}' => [{{ row.query | raw }}];
+{% endfor %}
+    }
+{% endif %}
+{% if invalid_filters %}
+
+    /**
+     * SortFilter valide la direction : une valeur invalide est rejetée en 422
+     * (l'ancien OrderFilter l'ignorait silencieusement).
+     *
+     * @param array<string, mixed> $query
+     */
+    #[DataProvider('invalidFilterProvider')]
+    public function testInvalidFilterIsRejected(array $query): void
+    {
+        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => $query]);
+
+        $this->assertResponseStatusCodeSame(422);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function invalidFilterProvider(): iterable
+    {
+{% for row in invalid_filters %}
+        yield '{{ row.label | raw }}' => [{{ row.query | raw }}];
+{% endfor %}
+    }
+{% endif %}
+}

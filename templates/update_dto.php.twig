@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ uses_block | raw }}
+
+/**
+ * DTO de mise à jour partielle pour l'entité {{ entity_name }} — opération PATCH.
+ *
+ * null = champ non modifié. L'UpdateProcessor applique uniquement les valeurs non nulles.
+ * Inclut le champ 'status' si présent.{{ soft_note }}
+ *
+ * @see {{ entity_name }}UpdateProcessor
+ */
+class {{ entity_name }}UpdateDto
+{
+{{ props_block | raw }}
+}

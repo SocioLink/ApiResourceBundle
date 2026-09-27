@@ -1,0 +1,15 @@
+<?php
+
+namespace {{ namespace }};
+{{ uses_block | raw }}
+
+/**
+ * DTO d'upload pour le champ '{{ field_name }}' de l'entité {{ entity_name }}.
+ *
+ * @see {{ entity_name }}Upload{{ prop_suffix }}Processor
+ */
+class {{ entity_name }}Upload{{ prop_suffix }}Dto
+{
+{{ assert_file_raw | raw }}
+    public File|null ${{ field_name }} = null;
+}

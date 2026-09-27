@@ -1,0 +1,82 @@
+<?php
+
+namespace {{ namespace }};
+{{ uses_block | raw }}
+
+/**
+ * Processor de mise à jour partielle pour l'entité {{ entity_name }} — opération PATCH.
+ *
+ * Charge l'entité existante, puis applique les champs non-null du DTO.
+ * Les propriétés null du DTO sont ignorées — la valeur existante est conservée.
+ *
+ * @implements ProcessorInterface<{{ entity_name }}UpdateDto, {{ entity_name }}>
+*
+* @see {{ entity_name }}UpdateDto
+*/
+readonly class {{ entity_name }}UpdateProcessor implements ProcessorInterface
+{
+public function __construct(
+#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
+private ProcessorInterface $persistProcessor,
+private EntityManagerInterface $em,
+private ValidatorInterface $validator
+) {}
+
+/**
+* @param {{ entity_name }}UpdateDto   $data         Données/Objet transmis
+* @param Operation                    $operation    Type de requête (POST|PATCH)
+* @param array|string|mixed           $uriVariables Variables de l'URL
+* @param array|string|mixed           $context      Contexte de la requête ApiPlatform
+*
+* @return {{ entity_name }}
+*
+* @throws \InvalidArgumentException si les données ne sont pas du bon type ou si l'ID est manquant
+* @throws NotFoundHttpException     si l'entité n'existe pas
+* @throws ApiValidationException    si la validation échoue
+*/
+final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+{
+if (!($data instanceof {{ entity_name }}UpdateDto)) {
+throw new \InvalidArgumentException(sprintf('Données invalides : %s attendu, %s reçu.', {{ entity_name }}UpdateDto::class, get_debug_type($data)));
+}
+
+$id = $uriVariables['id'] ?? $data->id ?? null;
+
+if ($id === null) {
+throw new \InvalidArgumentException('Identifiant manquant pour le chargement de l\'entité.');
+}
+
+if (is_string($id)) {
+$id = Uuid::fromString($id);
+}
+
+$entity = $this->em->getRepository({{ entity_name }}::class)->find($id);
+
+if ($entity === null) {
+throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', $id));
+}
+
+foreach (new ReflectionObject($data)->getProperties() as $property) {
+$name  = $property->getName();
+$value = $property->getValue($data);
+
+if ($value === null) {
+continue;
+}
+
+$setter = 'set' . ucfirst($name);
+
+if (method_exists($entity, $setter)) {
+$entity->$setter($value);
+}
+}
+
+$errors = $this->validator->validate($entity);
+
+if (count($errors) > 0) {
+throw new ApiValidationException($errors);
+}
+
+return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
+}
+}

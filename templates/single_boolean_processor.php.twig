@@ -1,0 +1,133 @@
+<?php
+
+namespace {{ namespace }};
+{{ uses_block | raw }}
+
+/**
+ * Processor de basculement du champ '{{ field_name }}' de l'entité {{ entity_name }}.
+ *
+ * @implements ProcessorInterface<{{ dto_class }}, {{ entity_name }}>
+* @see {{ dto_class }}
+*/
+readonly class {{ entity_name }}{{ pascal_name }}Processor implements ProcessorInterface
+{
+public function __construct(
+#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')] private ProcessorInterface $persistProcessor,
+private EntityManagerInterface $em,
+private ValidatorInterface $validator,
+{% if needs_security %}private AppSecurity $security{% endif %}
+) {}
+
+/**
+* @param {{ dto_class }} $data Données/Objet transmis
+* @param Operation $operation Type de requête (POST|PATCH)
+* @param array|string|mixed $uriVariables Variables de l'URL
+* @param array|string|mixed $context Contexte de la requête ApiPlatform
+*
+* @return {{ entity_name }}
+*/
+final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+{
+if (!($data instanceof {{ dto_class }})) {
+throw new \InvalidArgumentException(sprintf('Données invalides : %s attendu, %s reçu.', {{ dto_class }}::class, get_debug_type($data)));
+}
+
+$id = $uriVariables['id'] ?? null;
+if ($id === null) {
+throw new \InvalidArgumentException('Identifiant manquant pour le chargement de l\'entité.');
+}
+
+if (is_string($id)) {
+$id = Uuid::fromString($id);
+}
+
+$entity = $this->em->getRepository({{ entity_name }}::class)->find($id);
+
+if ($entity === null) {
+throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', $id));
+}
+
+{% if field_name == 'itDeleted' %}
+    if ($data->itDeleted !== null) {
+    if ($data->itDeleted === false && $entity->isItErased()) {
+    throw new AppUnprocessableException('Impossible de restaurer une ressource qui a été écrasée.');
+    }
+
+    if ($data->itDeleted === false && $entity->isItDeleted() === true) {
+    $currentUser = $this->security->getUser();
+    $deletedBy   = $entity->getDeletedBy();
+
+    if ($currentUser === null || $deletedBy === null || (string) $currentUser !== (string) $deletedBy) {
+    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut la restaurer.");
+    }
+    }
+
+    $oldValue = $entity->isItDeleted();
+    $entity->setItDeleted($data->itDeleted);
+
+    if ($data->itDeleted === true && $oldValue === false) {
+    $entity->setDeletedBy($this->security->getUser());
+    }
+
+    if ($data->itDeleted === false) {
+    $entity->setDeletedBy(null);
+    }
+    }
+{% elseif field_name == 'itErased' %}
+    if ($data->itErased !== null) {
+    $currentUser = $this->security->getUser();
+
+    if ($data->itErased === true && !$entity->isItDeleted()) {
+    throw new AppUnprocessableException("La ressource doit d'abord être supprimée avant d'être écrasée.");
+    }
+
+    if ($data->itErased === true) {
+    $deletedBy = $entity->getDeletedBy();
+
+    if ($currentUser === null || $deletedBy === null || (string) $currentUser !== (string) $deletedBy) {
+    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut l'écraser.");
+    }
+    }
+
+    if ($data->itErased === false && !$this->security->isGranted('{{ admin_role | raw }}')) {
+    throw new AppAccessDeniedException('Seul un administrateur peut restaurer une ressource écrasée.');
+    }
+
+    $oldValue = $entity->isItErased();
+    $entity->setItErased($data->itErased);
+
+    if ($data->itErased === false && $oldValue === true) {
+    $entity->setItDeleted(false);
+    $entity->setDeletedBy(null);
+    $entity->setErasedBy(null);
+    }
+
+    if ($data->itErased === true && $oldValue === false) {
+    $entity->setErasedBy($currentUser);
+    }
+    }
+{% else %}
+    // Mapping automatique (mode PATCH)
+    foreach (new ReflectionObject($data)->getProperties() as $property) {
+    $name  = $property->getName();
+    $value = $property->getValue($data);
+
+    if ($value === null) {
+    continue;
+    }
+
+    $setter = 'set' . ucfirst($name);
+    if (method_exists($entity, $setter)) {
+    $entity->$setter($value);
+    }
+    }
+{% endif %}
+
+$errors = $this->validator->validate($entity);
+if (count($errors) > 0) {
+throw new ApiValidationException($errors);
+}
+
+return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
+}
+}

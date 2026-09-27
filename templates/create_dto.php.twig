@@ -1,0 +1,18 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ uses_block | raw }}
+
+/**
+ * DTO de création pour l'entité {{ entity_name }} — opération POST.
+ *
+ * Expose les champs autorisés à la création. Les champs système
+ * et les associations ToMany sont exclus.
+ *
+ * @see {{ entity_name }}CreateProcessor
+ */
+class {{ entity_name }}CreateDto
+{
+{{ props_block | raw }}
+}

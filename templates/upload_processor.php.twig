@@ -1,0 +1,60 @@
+<?php
+
+namespace {{ namespace }};
+{{ uses_block | raw }}
+
+/**
+ * Processor d'upload pour la propriété '{{ field_name }}' de l'entité {{ entity_name }}.
+ * Endpoint : PATCH /api/{{ entity_name }}/{id}/{{ uri_segment }} (multipart/form-data).
+ *
+ * @implements ProcessorInterface<{{ entity_name }}, {{ entity_name }}>
+* @see {{ dto_class }}
+*/
+readonly class {{ entity_name }}Upload{{ prop_suffix }}Processor implements ProcessorInterface
+{
+public function __construct(
+#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')] private ProcessorInterface $persistProcessor,
+private ValidatorInterface $validator
+) {}
+
+/**
+* @param {{ entity_name }} $data Données/Objet transmis
+* @param Operation $operation Type d'opération sur la requête
+* @param array|string|mixed $uriVariables Variables de l'URL
+* @param array|string|mixed $context Contexte de la requête ApiPlatform
+*
+* @return {{ entity_name }}
+*/
+final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+{
+$entity = $data;
+
+if (!$entity instanceof {{ entity_name }}) {
+throw new BadRequestHttpException('{{ entity_name }} non trouvé');
+}
+
+$request = $context['request'] ?? null;
+if (!$request instanceof Request) {
+throw new BadRequestHttpException('Requête non trouvée');
+}
+
+$file = $request->files->get('{{ field_name }}');
+if (!$file) {
+throw new BadRequestHttpException('Fichier "{{ field_name }}" manquant');
+}
+
+// Validation manuelle du DTO
+$dto = new {{ dto_class }}();
+$dto->{{ field_name }} = $file;
+$errors = $this->validator->validate($dto);
+
+if (count($errors) > 0) {
+throw new BadRequestHttpException((string) $errors->get(0)->getMessage());
+}
+
+$entity->set{{ field_name|capitalize }}($file){% if has_updated_at %}
+    ->setUpdatedAt(new DateTimeImmutable()){% endif %};
+
+return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
+}
+}
