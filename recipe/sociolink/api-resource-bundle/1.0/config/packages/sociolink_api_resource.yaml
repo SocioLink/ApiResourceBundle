@@ -1,0 +1,27 @@
+# Générateur de ressources API Platform (sociolink/api-resource-bundle).
+#
+# Outil de développement : le bundle n'est chargé qu'en dev et en test, d'où les blocs when@.
+# Toutes les clés sont optionnelles ; les valeurs en commentaire sont les valeurs par défaut.
+# Référence complète : php bin/console config:dump-reference sociolink_api_resource
+when@dev: &sociolink_api_resource
+    sociolink_api_resource:
+        # root_namespace: App                  # racine PSR-4 du projet
+        # source_dir: src                      # dossier des sources, relatif au projet
+        # entity_namespace: Entity             # relatif à root_namespace
+        # dto_namespace: DTO                   # relatif à root_namespace
+        # state_namespace: State               # relatif à root_namespace
+        # tests:
+        #     namespace: App\Tests\Functional
+        #     directory: tests/Functional
+        # admin_role: ROLE_ADMIN               # rôle requis pour lever un soft-erase (itErased)
+        # system_fields:                        # champs exclus du CreateDto (gérés par le système)
+        #     [details, status, createdAt, updatedAt, deletedAt, erasedAt, createdBy, updatedBy, deletedBy, erasedBy, itDeleted, itErased]
+        # update_system_fields:                 # champs exclus de l'UpdateDto
+        #     [details, createdAt, updatedAt, deletedAt, erasedAt, createdBy, updatedBy, deletedBy, erasedBy]
+        # boolean_special_fields: [itDeleted, itErased]  # booléens à logique soft-delete / soft-erase
+        # filters:
+        #     excluded_fields: []              # champs exclus des filtres et du tri
+        #     sort_on_to_one_relations: false  # autorise order[author]=asc
+        # templates_directory: null            # gabarits Twig prioritaires (surcharge)
+
+when@test: *sociolink_api_resource

@@ -1,0 +1,14 @@
+{
+    "recipes": {
+        "sociolink/api-resource-bundle": [
+            "1.0"
+        ]
+    },
+    "branch": "main",
+    "is_contrib": true,
+    "_links": {
+        "repository": "github.com/SocioLink/ApiResourceBundle",
+        "origin_template": "{package}:{version}@github.com/SocioLink/ApiResourceBundle:main",
+        "recipe_template": "https://api.github.com/repos/SocioLink/ApiResourceBundle/contents/flex/{package_dotted}.{version}.json?ref=main"
+    }
+}

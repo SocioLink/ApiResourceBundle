@@ -1,0 +1,5 @@
+  * Générez les ressources API Platform de vos entités :
+    <fg=blue>php bin/console generate:resource</>           (menu interactif)
+    <fg=blue>php bin/console generate:resource Article</>   (une entité)
+
+  * Configuration facultative : <fg=green>config/packages/sociolink_api_resource.yaml</>
