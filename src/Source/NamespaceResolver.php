@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    namespace SocioLink\ApiResourceBundle\Source;
 
     use Doctrine\Inflector\InflectorFactory;
 
@@ -151,6 +151,15 @@
             $snake = strtolower((string)preg_replace('/(?<!^)[A-Z]/', '_$0', $entityName));
 
             return InflectorFactory::create()->build()->pluralize($snake);
+        }
+
+        /*
+         * Segment d'URI de l'endpoint de basculement individuel d'un booléen (--detach-boolean).
+         *
+         * Exemple : 'itDeleted' → 'toggle-it-deleted'
+         */
+        public function toggleUriSegment(string $fieldName): string {
+            return 'toggle-' . strtolower((string)preg_replace('/(?<!^)[A-Z]/', '-$0', str_replace('_', '-', $fieldName)));
         }
 
         /* ── Utilitaires ─── */

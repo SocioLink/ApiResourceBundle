@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    namespace SocioLink\ApiResourceBundle\Source;
 
     use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -82,10 +82,14 @@
             'ApiPlatform\\Doctrine\\Orm\\Filter\\UuidFilter',
         ];
 
-        /* $namespaceResolver fournit le chemin du fichier entité et les segments d'URI ; $filterBuilder classifie les champs en paramètres de filtrage. */
+        /*
+         * $namespaceResolver fournit le chemin du fichier entité et les segments d'URI ; $filterBuilder classifie
+         * les champs en paramètres de filtrage ; $config identifie les espaces de noms des artefacts générés.
+         */
         public function __construct(
-            private NamespaceResolver     $namespaceResolver,
+            private NamespaceResolver       $namespaceResolver,
             private FilterDefinitionBuilder $filterBuilder,
+            private GeneratorConfig         $config,
         ) {}
 
         /* ── Point d'entrée : ressource principale ─── */
@@ -101,9 +105,14 @@
          *
          * Retour : 'skipped' | 'not_found' | 'error' | chemin absolu du fichier
          */
+        /**
+         * @param array<string, array<string, mixed>>                 $fields
+         * @param array<string, mixed>                                $allBooleanFields
+         * @param list<array{propSuffix: string, uriSegment: string}> $uploadFields
+         */
         public function injectAttributesIntoEntity(
             string       $entityClass, string $entityName, array $fields, string $dtoNs, string $stateNs, GenerationOptions $options,
-            SymfonyStyle $io, bool $hasStatus, array $booleanFields, array $allBooleanFields, array $uploadFields): string {
+            SymfonyStyle $io, array $allBooleanFields, array $uploadFields): string {
             $filePath = $this->namespaceResolver->entityFilePath($entityClass);
 
             if (!file_exists($filePath)) {
@@ -137,8 +146,7 @@
             }
 
             [$attrBlock, $requiredFqcns] = $this->buildEntityAttributeBlock(
-                $entityClass, $entityName, $fields, $dtoNs, $stateNs, $options,
-                $hasStatus, $booleanFields, $allBooleanFields, $uploadFields,
+                $entityClass, $entityName, $fields, $dtoNs, $stateNs, $options, $allBooleanFields, $uploadFields,
             );
 
             $declStart = $this->findDeclarationStart($source, $entityName);
@@ -174,6 +182,9 @@
          * Paramètre $targetFields : champs de l'entité enfant (FieldAnalyser::getEntityFields()).
          *
          * Retour : 'skipped' | 'not_found' | 'error' | chemin absolu du fichier
+         */
+        /**
+         * @param array<string, array<string, mixed>> $targetFields
          */
         public function injectSubResourceAttributes(
             string            $parentClass,
@@ -281,9 +292,16 @@
          *
          * Retour : [bloc PHP, liste triée des FQCN à importer]
          */
+        /**
+         * @param array<string, array<string, mixed>>                 $fields
+         * @param array<string, mixed>                                $allBooleanFields
+         * @param list<array{propSuffix: string, uriSegment: string}> $uploadFields
+         *
+         * @return array{string, list<string>}
+         */
         public function buildEntityAttributeBlock(
             string            $entityClass, string $entityName, array $fields, string $dtoNs, string $stateNs,
-            GenerationOptions $options, bool $hasStatus, array $booleanFields, array $allBooleanFields, array $uploadFields): array {
+            GenerationOptions $options, array $allBooleanFields, array $uploadFields): array {
             $routePrefix = $this->namespaceResolver->getRoutePrefix($entityClass);
             $uriBase     = $this->namespaceResolver->toApiPlatformUriBase($entityName);
             $link        = $options->linksArtifactsToResource(); /* false en --only-resource / --all : opérations « nues » */
@@ -293,12 +311,15 @@
             /* La virgule finale de chaque ligne est indispensable : les lignes sont jointes sans séparateur. */
             $operationLines = [];
 
+            /* --with-provider : le Provider généré est câblé sur Get (sauf en mode « libre », où rien n'est lié). */
+            $get = $link && $options->withProvider ? "new Get(provider: {$entityName}Provider::class)" : 'new Get()';
+
             if ($definitions === []) {
-                $operationLines[] = '        new Get(), new GetCollection(),';
+                $operationLines[] = "        {$get}, new GetCollection(),";
             }
             else {
                 /* Get et GetCollection sont séparés : les paramètres de filtrage se rattachent à GetCollection uniquement. */
-                $operationLines[] = '        new Get(),';
+                $operationLines[] = "        {$get},";
                 $operationLines[] = '        new GetCollection(';
                 $operationLines[] = '            parameters: [';
 
@@ -322,7 +343,7 @@
                 if ($options->detachBoolean) {
                     foreach ($allBooleanFields as $fieldName => $info) {
                         $pascal           = ucfirst($fieldName);
-                        $uriSegment       = 'toggle-' . strtolower((string)preg_replace('/(?<!^)[A-Z]/', '-$0', $fieldName)); /* 'itDeleted' → 'toggle-it-deleted' */
+                        $uriSegment       = $this->namespaceResolver->toggleUriSegment((string)$fieldName); /* 'itDeleted' → 'toggle-it-deleted' */
                         $operationLines[] = "        new Patch(uriTemplate: '/{$uriBase}/{id}/{$uriSegment}', input: {$entityName}{$pascal}Dto::class, processor: {$entityName}{$pascal}Processor::class),";
                     }
                 }
@@ -362,8 +383,11 @@
                 $directives[] = $options->publicMercure ? 'mercure: true' : "mercure: ['private' => true]";
             }
 
-            $directives[] = $orderClause;
-            $directivesLine = '    ' . implode(', ', $directives) . ',';
+            if ($orderClause !== null) {
+                $directives[] = $orderClause;
+            }
+
+            $directivesLine = $directives !== [] ? '    ' . implode(', ', $directives) . ",\n" : '';
 
             /*
              * GraphQL : le #[ApiFilter] de classe filtrait aussi la collection GraphQL, ce que ne font PAS
@@ -386,7 +410,7 @@
 
             $attrBlock = "#[ApiResource(\n"
                          . "    operations: {$operationsBlock},\n"
-                         . "{$directivesLine}\n"
+                         . $directivesLine
                          . $graphQl
                          . ')]';
 
@@ -404,9 +428,12 @@
          * Détermine la clause `order` du #[ApiResource] (indépendante des paramètres de tri) :
          *  1. attributs de nommage (ASC) : fullName, headLine, givenName, shortName, shortHead, familyName, title, name
          *  2. champ createdAt (DESC)
-         *  3. repli sur id (DESC)
+         *  3. repli sur id (DESC), si l'entité a un champ id ; sinon aucune clause
          */
-        private function resolveOrderClause(array $fields): string {
+        /**
+         * @param array<string, mixed> $fields
+         */
+        private function resolveOrderClause(array $fields): ?string {
             $nameAttributes = ['fullName', 'headLine', 'givenName', 'shortName', 'shortHead', 'familyName', 'title', 'name'];
 
             foreach ($nameAttributes as $attr) {
@@ -419,7 +446,7 @@
                 return "order: ['createdAt' => 'DESC']";
             }
 
-            return "order: ['id' => 'DESC']";
+            return isset($fields['id']) ? "order: ['id' => 'DESC']" : null;
         }
 
         /* ── Liste des FQCN à importer ─── */
@@ -429,6 +456,13 @@
          *
          * Les imports de DTO/Processors ne sont nécessaires que si les artefacts sont RÉFÉRENCÉS dans les
          * opérations (linksArtifactsToResource()). $filterFqcns vient de FilterDefinitionBuilder::requiredFqcns().
+         */
+        /**
+         * @param array<string, mixed>            $allBooleanFields
+         * @param list<array{propSuffix: string}> $uploadFields
+         * @param list<string>                    $filterFqcns
+         *
+         * @return list<string>
          */
         private function buildRequiredFqcns(
             string $entityName, string $dtoNs, string $stateNs, GenerationOptions $options,
@@ -461,7 +495,7 @@
 
                 if ($options->detachBoolean) {
                     foreach (array_keys($allBooleanFields) as $fieldName) {
-                        $pascal  = ucfirst($fieldName);
+                        $pascal  = ucfirst((string)$fieldName);
                         $fqcns[] = $dtoNs . '\\' . $entityName . $pascal . 'Dto';
                         $fqcns[] = $stateNs . '\\' . $entityName . $pascal . 'Processor';
                     }
@@ -489,6 +523,9 @@
          * Paramètre $addedUses   : lignes `use` ajoutées (affichées en --preview).
          *
          * Retour : chemin du fichier (réel ou simulé) ou 'error'
+         */
+        /**
+         * @param list<string> $addedUses
          */
         private function commit(string $filePath, string $entityClass, string $newSource, string $attrBlock, array $addedUses, GenerationOptions $options, SymfonyStyle $io): string {
             if ($options->preview) {
@@ -600,8 +637,17 @@
          * Indique si un FQCN a été importé par le générateur : liste explicite, ou DTO/Processor/Provider généré.
          */
         private function isGeneratorOwned(string $fqcn): bool {
-            return in_array($fqcn, self::OWNED_FQCNS, true)
-                   || preg_match('/^App\\\\(?:DTO|State)\\\\.+(?:Dto|Processor|Provider)$/', $fqcn) === 1;
+            if (in_array($fqcn, self::OWNED_FQCNS, true)) {
+                return true;
+            }
+
+            foreach ([$this->config->dtoNamespace, $this->config->stateNamespace] as $namespace) {
+                if (str_starts_with($fqcn, $namespace . '\\') && preg_match('/(?:Dto|Processor|Provider)$/', $fqcn) === 1) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /* ── Attributs : détection, portée de classe, sous-ressources ─── */
@@ -642,6 +688,9 @@
          *  - 'indent'      : indentation de cette ligne
          *
          * Retour : liste (vide si la classe n'est pas trouvée)
+         */
+        /**
+         * @return list<array{start: int, end: int, text: string, ownLine: bool, indent: string}>
          */
         private function findClassAttributes(string $source, string $entityName, string $name): array {
             $declStart = $this->findDeclarationStart($source, $entityName);
@@ -815,6 +864,9 @@
          * Retour : [offset du début de ligne, indentation de cette ligne]. Si du code précède la
          * déclaration sur la même ligne (ex. `#[ORM\Entity] final class`), l'offset est celui de la déclaration.
          */
+        /**
+         * @return array{int, string}
+         */
         private function resolveLineStart(string $source, int $declStart): array {
             $lineBreak = strrpos(substr($source, 0, $declStart), "\n");
             $lineStart = $lineBreak === false ? 0 : $lineBreak + 1;
@@ -827,6 +879,11 @@
          * Ajoute les `use` manquants après le dernier `use` racine, à défaut après la ligne `namespace`.
          *
          * Retour : [nouvelle source, lignes `use` ajoutées]
+         */
+        /**
+         * @param list<string> $fqcns
+         *
+         * @return array{string, list<string>}
          */
         private function addImports(string $source, array $fqcns, string $eol): array {
             $useIndent = '';

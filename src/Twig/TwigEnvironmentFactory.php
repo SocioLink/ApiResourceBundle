@@ -9,14 +9,14 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Twig;
+    namespace SocioLink\ApiResourceBundle\Twig;
 
     use Twig\Environment;
     use Twig\Loader\FilesystemLoader;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\GeneratorConfig;
+    use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
 
     /**
-     * Fabrique l'environnement Twig propre au bundle (service `black_sheep_api_resource.twig`).
+     * Fabrique l'environnement Twig propre au bundle (service `sociolink_api_resource.twig`).
      *
      * Le bundle possède son PROPRE moteur : il ne dépend ni de TwigBundle ni de la configuration Twig
      * de l'application, et les gabarits générés ne sont jamais échappés ni mis en cache par erreur.
@@ -52,7 +52,8 @@
 
             $paths[] = $bundleTemplatesDir;
 
-            return new Environment(new FilesystemLoader($paths));
+            /* Du code PHP est généré, pas du HTML : aucun échappement ; une variable manquante est une erreur, pas une chaîne vide. */
+            return new Environment(new FilesystemLoader($paths), ['autoescape' => false, 'strict_variables' => true]);
         }
 
         /* Indique si le chemin est absolu (Unix « / », ou Windows « C:\ » / « C:/ »). */

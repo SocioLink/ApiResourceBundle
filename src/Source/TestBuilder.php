@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    namespace SocioLink\ApiResourceBundle\Source;
 
     use Twig\Environment;
     use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -31,12 +31,12 @@
      * @internal Réservé à l'usage interne de la commande generate:resource.
      */
     final class TestBuilder {
-        /* $twig est le moteur de gabarits dédié du bundle (service black_sheep_api_resource.twig) ; $config fournit les champs système exclus du POST de test. */
+        /* $twig est le moteur de gabarits dédié du bundle (service sociolink_api_resource.twig) ; $config fournit les champs système exclus du POST de test. */
         public function __construct(
             private readonly NamespaceResolver       $namespaceResolver,
             private readonly FilterDefinitionBuilder $filterBuilder,
             private readonly GeneratorConfig         $config,
-            #[Autowire(service: 'black_sheep_api_resource.twig')] private readonly Environment $twig,
+            #[Autowire(service: 'sociolink_api_resource.twig')] private readonly Environment $twig,
         ) {}
 
         /*
@@ -46,16 +46,17 @@
          * Paramètre $entityName  : nom court de l'entité.
          * Paramètre $testNs      : namespace du fichier de test.
          * Paramètre $fields      : champs de l'entité (FieldAnalyser::getEntityFields()).
-         * Paramètre $dtoNs       : namespace des DTOs.
          *
          * Retour : code PHP complet du fichier de test.
+         */
+        /**
+         * @param array<string, array<string, mixed>> $fields
          */
         public function buildFunctionalTest(
             string $entityClass,
             string $entityName,
             string $testNs,
             array  $fields,
-            string $dtoNs,
         ): string {
             /* routePrefix (ex. '/blog') + segment pluralisé : l'URL réelle de la collection. */
             $uriBase = ltrim($this->namespaceResolver->getRoutePrefix($entityClass) . '/' . $this->namespaceResolver->toApiPlatformUriBase($entityName), '/');
@@ -91,7 +92,6 @@
                 'namespace'       => $testNs,
                 'uses_block'      => implode("\n", $uses),
                 'entity_name'     => $entityName,
-                'dto_ns'          => $dtoNs,
                 'uri_base'        => $uriBase,
                 'required_fields' => $requiredFields,
                 'valid_filters'   => array_map($toRow, $examples['valid']),
@@ -103,30 +103,44 @@
          * Retourne un littéral PHP valide pour le champ, selon son type Doctrine.
          *
          * Une chaîne partout (ancien comportement) faisait échouer le POST en 422 pour les entiers,
-         * booléens, dates et UUID.
+         * booléens, dates et UUID. Les valeurs suivent les types PHP des DTOs générés
+         * (FieldAnalyser::toPhpType()) : `decimal` est une chaîne, `float` un nombre.
+         */
+        /**
+         * @param array<string, mixed> $info
          */
         private function sampleValue(string $fieldName, array $info): string {
+            /* Énumération : la première valeur autorisée, sinon le POST est rejeté. */
+            if (is_array($info['enumCases'] ?? null) && $info['enumCases'] !== []) {
+                return var_export($info['enumCases'][0], true);
+            }
+
             $type = strtolower((string)$info['doctrineType']);
 
             return match (true) {
                 in_array($type, ['integer', 'smallint', 'bigint'], true)                                                                 => '1',
-                in_array($type, ['float', 'decimal'], true)                                                                              => '1.5',
+                in_array($type, ['float', 'smallfloat'], true)                                                                           => '1.5',
+                $type === 'decimal'                                                                                                      => "'1.50'",
                 $type === 'boolean'                                                                                                      => 'true',
                 in_array($type, ['datetime', 'datetime_immutable', 'datetimetz', 'datetimetz_immutable', 'date', 'date_immutable'], true) => "'2026-01-01T00:00:00+00:00'",
+                in_array($type, ['time', 'time_immutable'], true)                                                                        => "'12:00:00'",
                 in_array($type, ['uuid', 'guid', 'uuid_binary'], true)                                                                   => "'00000000-0000-7000-8000-000000000000'",
                 in_array($type, ['json', 'array', 'simple_array', 'json_array'], true)                                                   => '[]',
-                default                                                                                                                  => "'test_{$fieldName}'",
+                default                                                                                                                  => var_export("test_{$fieldName}", true),
             };
         }
 
         /*
          * Exporte un tableau imbriqué (clés et valeurs texte) en littéral PHP court.
          */
+        /**
+         * @param array<array-key, mixed> $data
+         */
         private function exportArray(array $data): string {
             $parts = [];
 
             foreach ($data as $key => $value) {
-                $parts[] = "'" . addslashes((string)$key) . "' => " . (is_array($value) ? $this->exportArray($value) : "'" . addslashes((string)$value) . "'");
+                $parts[] = var_export((string)$key, true) . ' => ' . (is_array($value) ? $this->exportArray($value) : var_export(is_scalar($value) ? (string)$value : '', true));
             }
 
             return '[' . implode(', ', $parts) . ']';

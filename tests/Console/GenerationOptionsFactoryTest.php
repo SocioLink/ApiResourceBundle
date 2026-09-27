@@ -9,14 +9,14 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Tests\Console;
+    namespace SocioLink\ApiResourceBundle\Tests\Console;
 
     use Symfony\Component\Console\Input\ArrayInput;
     use Symfony\Component\Console\Input\InputOption;
     use Symfony\Component\Console\Input\InputDefinition;
     use PHPUnit\Framework\TestCase;
-    use BlackSheep\Symfony\ApiResourceBundle\Console\InvalidOptionsException;
-    use BlackSheep\Symfony\ApiResourceBundle\Console\GenerationOptionsFactory;
+    use SocioLink\ApiResourceBundle\Console\InvalidOptionsException;
+    use SocioLink\ApiResourceBundle\Console\GenerationOptionsFactory;
 
     /**
      * Vérifie les règles de validation : options mutuellement exclusives, --reinit sans --force,

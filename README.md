@@ -1,7 +1,6 @@
-# BlackSheep\Symfony\ApiResourceBundle
+# SocioLink\ApiResourceBundle
 
-[![Packagist](https://img.shields.io/packagist/v/blacksheep/api-resource-bundle.svg)](https://packagist.org/packages/blacksheep/api-resource-bundle)
-[![CI](https://github.com/SocioLink/ApiResourceBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/SocioLink/ApiResourceBundle/actions/workflows/ci.yml)
+[![Packagist](https://img.shields.io/packagist/v/sociolink/api-resource-bundle.svg)](https://packagist.org/packages/sociolink/api-resource-bundle)
 [![License](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
 [![PHP](https://img.shields.io/badge/php-%3E%3D8.5-777bb4.svg)](composer.json)
 
@@ -27,7 +26,7 @@ d'API Platform, de Symfony et de Doctrine — et fonctionne donc en production s
 ## Installation
 
 ```bash
-composer require --dev blacksheep/api-resource-bundle
+composer require --dev sociolink/api-resource-bundle
 ```
 
 Le bundle n'est **pas** enregistré automatiquement (pas de recette Flex à ce stade). Ajoutez-le dans
@@ -36,7 +35,7 @@ Le bundle n'est **pas** enregistré automatiquement (pas de recette Flex à ce s
 ```php
 return [
     // ...
-    BlackSheep\Symfony\ApiResourceBundle\ApiResourceBundle::class => ['dev' => true, 'test' => true],
+    SocioLink\ApiResourceBundle\ApiResourceBundle::class => ['dev' => true, 'test' => true],
 ];
 ```
 
@@ -94,17 +93,17 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 
 ### Destructrices
 
-| Option            | Effet                                                                        |
-|-------------------|------------------------------------------------------------------------------|
-| `--force` / `-f`  | Écrase les fichiers existants et réinjecte `#[ApiResource]`.                 |
-| `--reinit` / `-r` | Avec `--force` : supprime les répertoires DTO/ et State/ avant régénération. |
+| Option            | Effet                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--force` / `-f`  | Écrase les fichiers existants et réinjecte `#[ApiResource]`.                                                                                        |
+| `--reinit` / `-r` | Avec `--force` : supprime les dossiers `DTO/<Entité>` et `State/<Entité>` des **seules** entités traitées (confirmation demandée dans un terminal). |
 
 ### Mutuellement exclusives (une seule à la fois)
 
 | Option                    | Effet                                                              |
 |---------------------------|--------------------------------------------------------------------|
 | `--only-resource` / `-o`  | Injecte `#[ApiResource]` + filtres uniquement, aucun artefact.     |
-| `--with-provider` / `-w`  | Mode par défaut + génère un Provider pour `GET {id}`.              |
+| `--with-provider` / `-w`  | Mode par défaut + Provider pour `GET {id}`, câblé sur `Get`.       |
 | `--toggle-boolean` / `-t` | Un `ToggleDto`/`ToggleProcessor` unique pour tous les booléens.    |
 | `--detach-boolean` / `-d` | Un DTO + Processor `PATCH` individuel par booléen.                 |
 | `--all` / `-a`            | `#[ApiResource]` libre + tous les artefacts générés mais non liés. |
@@ -123,6 +122,20 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 
 Sans `--with-mercure`, **aucune** directive `mercure` n'est injectée.
 
+La commande se termine en échec (code 1) si une entité n'a pas pu être traitée ; les autres entités
+sont tout de même générées.
+
+### Artefacts générés
+
+| Artefact                               | Opération                                                               |
+|----------------------------------------|-------------------------------------------------------------------------|
+| `<Entité>CreateDto` + Processor        | `POST` — contraintes `#[Assert\*]` de l'entité recopiées                |
+| `<Entité>UpdateDto` + Processor        | `PATCH` partiel — `null` = champ non envoyé (`NotBlank` accepte `null`) |
+| `<Entité>ToggleDto` + Processor        | `PATCH /{id}/toggle` (`--toggle-boolean`)                               |
+| `<Entité><Champ>Dto` + Processor       | `PATCH /{id}/toggle-<champ>` (`--detach-boolean`)                       |
+| `<Entité>Upload<Champ>Dto` + Processor | `PATCH /{id}/<champ>` multipart, pour chaque `#[Vich\UploadableField]`  |
+| `<Entité>Provider`                     | `GET /{id}` avec chargement des relations ToOne (`--with-provider`)     |
+
 ## Filtres générés
 
 Les filtres sont des paramètres `#[QueryParameter]` attachés à `GetCollection` (`#[ApiFilter]`,
@@ -139,35 +152,45 @@ déprécié depuis API Platform 4.4, n'est jamais généré) :
 | relation ToMany, champ nullable   | `ExistsFilter`                                     | `?exists[deletedAt]=true`      |
 | tri                               | `SortFilter`                                       | `?order[name]=asc`             |
 
-Exclus de tout filtre : `id`, `text`, `json`, `array`, `simple_array`, `blob`, `binary`, `dateinterval`.
+Exclus de tout filtre : `id`, `text`, `json`, `array`, `simple_array`, `blob`, `binary`, `dateinterval`,
+ainsi que les champs listés dans `filters.excluded_fields`.
 
 ## Configuration
 
 Toutes les clés sont optionnelles ; les valeurs par défaut conviennent à une application Symfony
-standard (`App\` dans `src/`). Fichier `config/packages/dev/black_sheep_api_resource.yaml` :
+standard (`App\` dans `src/`). Fichier `config/packages/dev/sociolink_api_resource.yaml` :
 
 ```yaml
-black_sheep_api_resource:
-    root_namespace      : App              # racine PSR-4 du projet
-    source_dir          : src                  # dossier des sources, relatif au projet
-    entity_namespace    : Entity         # relatif à root_namespace → App\Entity
-    dto_namespace       : DTO               # relatif à root_namespace → App\DTO
-    state_namespace     : State           # relatif à root_namespace → App\State
-    tests               :
+sociolink_api_resource:
+    root_namespace        : App                  # racine PSR-4 du projet
+    source_dir            : src                      # dossier des sources, relatif au projet
+    entity_namespace      : Entity             # relatif à root_namespace → App\Entity
+    dto_namespace         : DTO                   # relatif à root_namespace → App\DTO
+    state_namespace       : State               # relatif à root_namespace → App\State
+    tests                 :
         namespace: App\Tests\Functional
         directory: tests/Functional
-    admin_role          : ROLE_ADMIN           # rôle requis pour lever un soft-erase (itErased)
-    system_fields       : # champs exclus du CreateDto
+    admin_role            : ROLE_ADMIN               # rôle requis pour lever un soft-erase (itErased)
+    system_fields         : # champs exclus du CreateDto
         - details
         - status
         - createdAt
         # ...
-    update_system_fields: # champs exclus de l'UpdateDto
+    update_system_fields  : # champs exclus de l'UpdateDto
         - details
         - createdAt
         # ...
-    templates_directory : null        # dossier de gabarits Twig prioritaires (surcharge), relatif au projet ou absolu
+    boolean_special_fields: # booléens à logique soft-delete / soft-erase
+        - itDeleted
+        - itErased
+    filters               :
+        excluded_fields         : [ ]              # champs exclus des filtres et du tri (ex. createdBy)
+        sort_on_to_one_relations: false  # autorise order[author]=asc
+    templates_directory   : null            # gabarits Twig prioritaires (surcharge), relatif au projet ou absolu
 ```
+
+Pour surcharger un gabarit, copiez-le depuis `templates/` du bundle dans `templates_directory` : les
+gabarits absents du dossier de surcharge restent ceux du bundle.
 
 ## Structure des fichiers générés
 
@@ -192,9 +215,13 @@ tests/
 
 ```bash
 composer install
-vendor/bin/phpunit
-vendor/bin/phpstan analyse
+composer check      # PHPStan (niveau 6) puis PHPUnit
 ```
+
+La suite comprend un test de bout en bout (`tests/Functional`) : le bundle est enregistré dans un
+noyau Symfony avec un EntityManager Doctrine réel, la commande est exécutée dans chaque mode, puis
+chaque classe générée est chargée et chaque `#[ApiResource]` injecté est instancié avec API
+Platform. `SOCIOLINK_E2E_KEEP=1 composer test` conserve le projet généré pour inspection.
 
 CI GitHub Actions (`.github/workflows/ci.yml`) : PHP 8.5 × Symfony 7.4/8.0/8.1 × API Platform 5.0.
 
@@ -203,12 +230,19 @@ CI GitHub Actions (`.github/workflows/ci.yml`) : PHP 8.5 × Symfony 7.4/8.0/8.1 
 Ce bundle remplace la commande `generate:resource` qui vivait auparavant dans un projet applicatif (`App\Command\GenerateResource`). Changements de comportement à connaître lors du portage :
 
 - toutes les conventions codées en dur (`App\`, `src/`, `ROLE_ADMIN`, champs système) sont
-  désormais dans `GeneratorConfig`, configurables via `black_sheep_api_resource.*` ;
+  désormais dans `GeneratorConfig`, configurables via `sociolink_api_resource.*` ;
 - la directive `mercure` n'est **plus injectée par défaut** — utilisez `--with-mercure` pour
   retrouver l'ancien comportement (`mercure: ['private' => true]`) ;
 - les tests générés (`--with-tests`) vivent dans `tests/Functional/` et non plus `src/Tests/` ;
 - sans argument, un terminal affiche désormais un **menu à choix unique** au lieu de traiter
-  toutes les entités.
+  toutes les entités ;
+- `--reinit` ne supprime plus les dossiers racines `DTO/` et `State/`, seulement ceux des entités traitées.
+
+### Depuis une version antérieure du bundle (`BlackSheep\Symfony\ApiResourceBundle`)
+
+- espace de noms : `SocioLink\ApiResourceBundle` (à mettre à jour dans `config/bundles.php`) ;
+- racine de configuration : `sociolink_api_resource` (au lieu de `black_sheep_api_resource`) ;
+- alias de commande : `sociolink:api-resource:generate` (au lieu de `black-sheep:api-resource:generate`).
 
 ## Licence
 

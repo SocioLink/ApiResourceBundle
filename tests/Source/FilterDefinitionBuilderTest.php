@@ -9,10 +9,10 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Tests\Source;
+    namespace SocioLink\ApiResourceBundle\Tests\Source;
 
     use PHPUnit\Framework\TestCase;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\FilterDefinitionBuilder;
+    use SocioLink\ApiResourceBundle\Source\FilterDefinitionBuilder;
 
     /**
      * Vérifie le contrat de classification : quel filtre moderne pour quel type de champ,

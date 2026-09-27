@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
 
 /**
  * DTO de basculement de TOUS les champs booléens de l'entité {{ entity_name }}.
- * Endpoint : PATCH /api/{{ uri_name }}/{id}/toggle.
+ * Endpoint : PATCH /{{ uri_name }}/{id}/toggle.
  *
  * null = non modifié. Inclut itDeleted et itErased si présents.
  *
@@ -12,5 +14,5 @@ namespace {{ namespace }};
  */
 class {{ entity_name }}ToggleDto
 {
-{{ props_block | raw }}
+{{ props_block|raw }}
 }

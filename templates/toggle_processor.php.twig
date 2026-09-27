@@ -1,154 +1,95 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
-{{ uses_block | raw }}
+
+{{ uses_block|raw }}
 
 /**
  * Processor de basculement de TOUS les booléens de l'entité {{ entity_name }}.
- * Endpoint : PATCH /api/{{ entity_name }}/{id}/toggle.
+ * Endpoint : PATCH /{{ uri_name }}/{id}/toggle.
  *
  * Applique les valeurs non nulles du {{ entity_name }}ToggleDto.
  * Inclut la logique complète de soft-delete/soft-erase pour itDeleted et itErased.
  *
  * @implements ProcessorInterface<{{ entity_name }}ToggleDto, {{ entity_name }}>
-* @see {{ entity_name }}ToggleDto
-*/
-readonly class {{ entity_name }}ToggleProcessor implements ProcessorInterface
+ *
+ * @see {{ entity_name }}ToggleDto
+ */
+final readonly class {{ entity_name }}ToggleProcessor implements ProcessorInterface
 {
-public function __construct(
-#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')] private ProcessorInterface $persistProcessor,
-private EntityManagerInterface $em,
-private ValidatorInterface $validator,
-{% if needs_security %}private AppSecurity $security{% endif %}
-) {}
+    public function __construct(
+        #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
+        private ProcessorInterface $persistProcessor,
+        private EntityManagerInterface $em,
+        private ValidatorInterface $validator,
+{% if needs_security %}
+        private AppSecurity $security,
+{% endif %}
+    ) {}
 
-/**
-* @param {{ entity_name }}ToggleDto $data Données/Objet transmis
-* @param Operation $operation Type de requête (POST|PATCH)
-* @param array|string|mixed $uriVariables Variables de l'URL
-* @param array|string|mixed $context Contexte de la requête ApiPlatform
-*
-* @return {{ entity_name }}
-*/
-final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
-{
-if (!($data instanceof {{ entity_name }}ToggleDto)) {
-throw new \InvalidArgumentException(sprintf('Données invalides : %s attendu, %s reçu.', {{ entity_name }}ToggleDto::class, get_debug_type($data)));
-}
+    /**
+     * @param mixed                $data         Données transmises (DTO désérialisé)
+     * @param Operation            $operation    Opération API Platform (PATCH)
+     * @param array<string, mixed> $uriVariables Variables de l'URL
+     * @param array<string, mixed> $context      Contexte de la requête API Platform
+     *
+     * @return {{ entity_name }}
+     */
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+    {
+        if (!$data instanceof {{ entity_name }}ToggleDto) {
+            throw new \InvalidArgumentException(sprintf('Données invalides : %s attendu, %s reçu.', {{ entity_name }}ToggleDto::class, get_debug_type($data)));
+        }
 
-$id = $uriVariables['id'] ?? null;
-if ($id === null) {
-throw new \InvalidArgumentException('Identifiant manquant pour le chargement de l\'entité.');
-}
+        $id = $uriVariables['id'] ?? null;
 
-if (is_string($id)) {
-$id = Uuid::fromString($id);
-}
+        if ($id === null) {
+            throw new \InvalidArgumentException('Identifiant manquant pour le chargement de l\'entité.');
+        }
 
-$entity = $this->em->getRepository({{ entity_name }}::class)->find($id);
+        if (is_string($id) && class_exists(Uuid::class) && Uuid::isValid($id)) {
+            $id = Uuid::fromString($id);
+        }
 
-if ($entity === null) {
-throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', $id));
-}
+        $entity = $this->em->getRepository({{ entity_name }}::class)->find($id);
 
-// Booléens standards : mapping automatique (itDeleted/itErased exclus — logique dédiée ci-dessous)
-$exclude = [{{ exclude_list | raw }}];
-foreach (new ReflectionObject($data)->getProperties() as $property) {
-$name = $property->getName();
-if (in_array($name, $exclude, true)) {
-continue;
-}
+        if ($entity === null) {
+            throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', (string) $id));
+        }
 
-$value = $property->getValue($data);
-if ($value === null) {
-continue;
-}
+        /* Booléens standards : mapping automatique (itDeleted/itErased exclus — logique dédiée ci-dessous). */
+        $exclude = [{{ exclude_list|raw }}];
 
-$setter = 'set' . ucfirst($name);
-if (method_exists($entity, $setter)) {
-$entity->$setter($value);
-}
-}
+        foreach (new ReflectionObject($data)->getProperties() as $property) {
+            $value = $property->getValue($data);
 
+            if ($value === null || in_array($property->getName(), $exclude, true)) {
+                continue;
+            }
+
+            $setter = 'set' . ucfirst($property->getName());
+
+            if (method_exists($entity, $setter)) {
+                $entity->$setter($value);
+            }
+        }
 {% if has_it_deleted %}
-    /**
-    * Soft-delete (itDeleted) :
-    *  - true  = suppression logique — enregistre deletedBy
-    *  - false = restauration — vérifie que seul l'auteur peut restaurer
-    *            et que la ressource n'est pas déjà écrasée (itErased)
-    */
-    if ($data->itDeleted !== null) {
-    if ($data->itDeleted === false && $entity->isItErased()) {
-    throw new AppUnprocessableException('Impossible de restaurer une ressource qui a été écrasée.');
-    }
 
-    if ($data->itDeleted === false && $entity->isItDeleted() === true) {
-    $currentUser = $this->security->getUser();
-    $deletedBy   = $entity->getDeletedBy();
-
-    if ($currentUser === null || $deletedBy === null || (string) $currentUser !== (string) $deletedBy) {
-    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut la restaurer.");
-    }
-    }
-
-    $oldValue = $entity->isItDeleted();
-    $entity->setItDeleted($data->itDeleted);
-
-    if ($data->itDeleted === true && $oldValue === false) {
-    $entity->setDeletedBy($this->security->getUser());
-    }
-
-    if ($data->itDeleted === false) {
-    $entity->setDeletedBy(null);
-    }
-    }
+{% include '_soft_delete.php.twig' %}
 {% endif %}
-
 {% if has_it_erased %}
-    /**
-    * Soft-erase (itErased) :
-    *  - true  = écrasement — nécessite itDeleted=true au préalable + auteur identique
-    *  - false = restauration — réservée aux {{ admin_role | raw }}
-    */
-    if ($data->itErased !== null) {
-    $currentUser = $this->security->getUser();
 
-    if ($data->itErased === true && !$entity->isItDeleted()) {
-    throw new AppUnprocessableException("La ressource doit d'abord être supprimée avant d'être écrasée.");
-    }
-
-    if ($data->itErased === true) {
-    $deletedBy = $entity->getDeletedBy();
-
-    if ($currentUser === null || $deletedBy === null || (string) $currentUser !== (string) $deletedBy) {
-    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut l'écraser.");
-    }
-    }
-
-    if ($data->itErased === false && !$this->security->isGranted('{{ admin_role | raw }}')) {
-    throw new AppAccessDeniedException('Seul un administrateur peut restaurer une ressource écrasée.');
-    }
-
-    $oldValue = $entity->isItErased();
-    $entity->setItErased($data->itErased);
-
-    if ($data->itErased === false && $oldValue === true) {
-    $entity->setItDeleted(false);
-    $entity->setDeletedBy(null);
-    $entity->setErasedBy(null);
-    }
-
-    if ($data->itErased === true && $oldValue === false) {
-    $entity->setErasedBy($currentUser);
-    }
-    }
+{% include '_soft_erase.php.twig' %}
 {% endif %}
 
-$errors = $this->validator->validate($entity);
-if (count($errors) > 0) {
-throw new ApiValidationException($errors);
-}
+        $errors = $this->validator->validate($entity);
 
-return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
-}
+        if (count($errors) > 0) {
+            throw new ApiValidationException($errors);
+        }
+
+        return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
+    }
 }

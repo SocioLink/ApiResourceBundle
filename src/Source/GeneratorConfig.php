@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    namespace SocioLink\ApiResourceBundle\Source;
 
     /**
      * Configuration résolue du bundle : tout ce qui, dans la version « commande de projet », était
@@ -21,7 +21,7 @@
      * Les espaces de noms `entity`, `dto` et `state` sont exprimés RELATIVEMENT à `rootNamespace`
      * en entrée (ex. 'Entity'), et stockés en absolu (ex. 'App\Entity').
      *
-     * @internal Construit par ApiResourceBundle à partir de la configuration `black_sheep_api_resource`.
+     * @internal Construit par ApiResourceBundle à partir de la configuration `sociolink_api_resource`.
      */
     final readonly class GeneratorConfig {
         /**
@@ -82,21 +82,31 @@
          * Paramètre $testDirectory        : dossier des tests générés, relatif au projet.
          * Paramètre $adminRole            : rôle requis pour lever un soft-erase (itErased).
          * Paramètre $templatesDirectory   : dossier de gabarits Twig prioritaires (surcharge), ou null.
+         * Paramètre $filterExcludedFields : champs exclus des paramètres de filtrage et de tri.
+         * Paramètre $sortOnToOneRelations : autorise le tri sur les relations ToOne (order[author]=asc).
+         */
+        /**
+         * @param list<string> $systemFields
+         * @param list<string> $updateSystemFields
+         * @param list<string> $booleanSpecialFields
+         * @param list<string> $filterExcludedFields
          */
         public function __construct(
-            string        $projectDir,
-            string        $rootNamespace = 'App',
-            public string $sourceDir = 'src',
-            string        $entityNamespace = 'Entity',
-            string        $dtoNamespace = 'DTO',
-            string        $stateNamespace = 'State',
-            string        $testNamespace = 'App\\Tests\\Functional',
-            public string $testDirectory = 'tests/Functional',
-            public string $adminRole = 'ROLE_ADMIN',
-            public array  $systemFields = self::DEFAULT_SYSTEM_FIELDS,
-            public array  $updateSystemFields = self::DEFAULT_UPDATE_SYSTEM_FIELDS,
-            public array  $booleanSpecialFields = self::DEFAULT_BOOLEAN_SPECIAL_FIELDS,
+            string         $projectDir,
+            string         $rootNamespace = 'App',
+            public string  $sourceDir = 'src',
+            string         $entityNamespace = 'Entity',
+            string         $dtoNamespace = 'DTO',
+            string         $stateNamespace = 'State',
+            string         $testNamespace = 'App\\Tests\\Functional',
+            public string  $testDirectory = 'tests/Functional',
+            public string  $adminRole = 'ROLE_ADMIN',
+            public array   $systemFields = self::DEFAULT_SYSTEM_FIELDS,
+            public array   $updateSystemFields = self::DEFAULT_UPDATE_SYSTEM_FIELDS,
+            public array   $booleanSpecialFields = self::DEFAULT_BOOLEAN_SPECIAL_FIELDS,
             public ?string $templatesDirectory = null,
+            public array   $filterExcludedFields = [],
+            public bool    $sortOnToOneRelations = false,
         ) {
             $this->projectDir      = rtrim(str_replace('\\', '/', $projectDir), '/');
             $this->rootNamespace   = trim($rootNamespace, '\\');

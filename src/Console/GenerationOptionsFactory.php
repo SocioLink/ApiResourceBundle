@@ -9,9 +9,9 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Console;
+    namespace SocioLink\ApiResourceBundle\Console;
 
-    use BlackSheep\Symfony\ApiResourceBundle\Source\GenerationOptions;
+    use SocioLink\ApiResourceBundle\Source\GenerationOptions;
     use Symfony\Component\Console\Input\InputInterface;
 
     /**

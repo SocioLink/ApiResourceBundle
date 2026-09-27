@@ -1,15 +1,5 @@
 <?php
 
-
-    /*
-     * Copyright (c) 2026.
-     * Date: 27/08/2026 12:50
-     * Author: Xavier KONGOLO <xsompwe@gmail.com>
-     * Description:
-     */
-
-    declare(strict_types=1);
-
     /*
      * Copyright (c) 2026.
      * Date: 22/08/2026 14:12
@@ -17,7 +7,9 @@
      * Description: Value Object pour les options de la commande generate:resource.
      */
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    declare(strict_types=1);
+
+    namespace SocioLink\ApiResourceBundle\Source;
 
     /**
      * Objet de valeur immuable transportant l'ensemble des options de génération
@@ -29,13 +21,13 @@
      * Les options indépendantes (dryRun, preview, interactive, withTests, subResources, graphqlFilters, withMercure, publicMercure)
      * peuvent être combinées avec n'importe quel mode.
      *
-     * @see \BlackSheep\Symfony\ApiResourceBundle\Console\GenerationOptionsFactory Validation de l'exclusivité des flags
+     * @see \SocioLink\ApiResourceBundle\Console\GenerationOptionsFactory Validation de l'exclusivité des flags
      */
     final readonly class GenerationOptions {
         /**
          * @param bool $force          --force / -f : écrase les fichiers existants et réinjecte les attributs
-         * @param bool $reinit         --reinit : utilisé UNIQUEMENT avec --force ; supprime les répertoires avant
-         *                             régénération (DTO/, State/, AppService si pas d'entité ciblée)
+         * @param bool $reinit         --reinit : utilisé UNIQUEMENT avec --force ; supprime les dossiers DTO et State
+         *                             des entités traitées avant régénération
          * @param bool $onlyResource   --only-resource : injecte #[ApiResource] + filtres uniquement.
          *                             Aucun DTO, Processor ou Provider n'est créé ni référencé
          * @param bool $withProvider   --with-provider : génère un Provider pour l'opération GET {id}.
@@ -43,16 +35,16 @@
          * @param bool $toggleBoolean  --toggle-boolean : crée un ToggleDto + ToggleProcessor pour TOUS les booléens
          *                             (y compris itDeleted et itErased). Les booléens sont retirés de UpdateDto/UpdateProcessor.
          * @param bool $detachBoolean  --detach-boolean : crée un DTO + Processor PATCH individuel
-         *                             pour chaque attribut booléen de l'entité.
-         *                             Sans ce flag, les booléens sont exclus des DTOs/Processors
+         *                             pour chaque attribut booléen de l'entité ; les booléens sont alors retirés
+         *                             de l'UpdateDto (sans option booléenne, ils y figurent)
          * @param bool $all            --all : injecte un #[ApiResource] libre (sans input/processor/provider)
          *                             ET génère tous les artefacts (DTOs, Processors, Providers) sans les lier
          * @param bool $dryRun         --dry-run : simule la génération sans écrire aucun fichier.
          *                             Affiche les fichiers qui seraient créés/modifiés/supprimés
          * @param bool $preview        --preview : affiche le code généré dans la console sans écrire.
          *                             Imply --dry-run. Utile pour inspecter le résultat avant de l'appliquer
-         * @param bool $interactive    --interactive / -i : mode interactif — affiche la liste des entités
-         *                             trouvées et demande lesquelles traiter
+         * @param bool $interactive    --interactive / -i : conservée pour compatibilité ; le menu s'affiche dès
+         *                             qu'aucune entité n'est indiquée dans un terminal
          * @param bool $withTests      --with-tests : génère un fichier de test fonctionnel ApiTestCase
          *                             pour chaque endpoint créé (POST, PATCH, GET)
          * @param bool $subResources   --sub-resources : génère des sous-ressources API Platform pour les
@@ -172,7 +164,7 @@
          * Indique si les booléens sont gérés par un Toggle unique.
          *
          * true  → ToggleDto + ToggleProcessor (mode --toggle-boolean)
-         * false → les booléens sont exclus des DTOs/Processors (mode par défaut)
+         * false → pas d'endpoint Toggle
          */
         public function usesToggleEndpoint(): bool {
             return $this->toggleBoolean;
@@ -186,17 +178,6 @@
          */
         public function includesSoftDeleteInUpdate(): bool {
             return !$this->toggleBoolean && !$this->detachBoolean;
-        }
-
-        /**
-         * Indique si les booléens standards (hors itDeleted/itErased) doivent être
-         * exclus des DTOs/Processors.
-         *
-         * true  → mode par défaut ou --toggle-boolean (booléens gérés ailleurs)
-         * false → --detach-boolean (chaque booléen a son propre DTO/Processor)
-         */
-        public function excludesStandardBooleans(): bool {
-            return !$this->detachBoolean;
         }
 
         /**

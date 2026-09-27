@@ -1,60 +1,58 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
-{{ uses_block | raw }}
+
+{{ uses_block|raw }}
 
 /**
- * Provider de lecture unitaire pour l'entité {{ entity_name }} — opération GET /api/{resources}/{id}.
+ * Provider de lecture unitaire pour l'entité {{ entity_name }} — opération GET /{id}.
  *
  * Charge l'entité par son identifiant avec eager loading des relations ToOne
  * pour éviter le problème N+1 lors de la sérialisation.
  *
  * @implements ProviderInterface<{{ entity_name }}>
-*/
-readonly class {{ entity_name }}Provider implements ProviderInterface
+ */
+final readonly class {{ entity_name }}Provider implements ProviderInterface
 {
-public function __construct(
-private EntityManagerInterface $em,
-) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+    ) {}
 
-/**
-* @param Operation            $operation    Nature de la requête (GET)
-* @param array|string|mixed   $uriVariables Variables de l'URL
-* @param array|string|mixed   $context      Contexte de la requête ApiPlatform
-*
-* @return {{ entity_name }}
-*
-* @throws NotFoundHttpException si l'entité n'existe pas
-*/
-public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
-{
-$id = $uriVariables['id'] ?? null;
+    /**
+     * @param Operation            $operation    Opération API Platform (GET)
+     * @param array<string, mixed> $uriVariables Variables de l'URL
+     * @param array<string, mixed> $context      Contexte de la requête API Platform
+     *
+     * @throws NotFoundHttpException si l'entité n'existe pas
+     */
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    {
+        $id = $uriVariables['id'] ?? null;
 
-if ($id === null) {
-throw new NotFoundHttpException('Identifiant manquant.');
-}
+        if ($id === null) {
+            throw new NotFoundHttpException('Identifiant manquant.');
+        }
 
-if (is_string($id)) {
-$id = Uuid::fromString($id);
-}
+        if (is_string($id) && class_exists(Uuid::class) && Uuid::isValid($id)) {
+            $id = Uuid::fromString($id);
+        }
 
-// Eager loading des relations ToOne pour éviter N+1
-$repository = $this->em->getRepository({{ entity_name }}::class);
-$qb         = $repository->createQueryBuilder('e');
-
+        $qb = $this->em->getRepository({{ entity_name }}::class)->createQueryBuilder('e');
 {% for relation in eager_relations %}
-    $qb->addSelect('{{ relation.alias }}')->leftJoin('e.{{ relation.field }}', '{{ relation.alias }}');
+        $qb->leftJoin('e.{{ relation.field }}', '{{ relation.alias }}')->addSelect('{{ relation.alias }}');
 {% endfor %}
 
-$entity = $qb->where('e.id = :id')
-->setParameter('id', $id)
-->getQuery()
-->getOneOrNullResult();
+        $entity = $qb->where('e.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
 
-if ($entity === null) {
-throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', $id));
-}
+        if ($entity === null) {
+            throw new NotFoundHttpException(sprintf('{{ entity_name }} "%s" introuvable.', (string) $id));
+        }
 
-return $entity;
-}
+        return $entity;
+    }
 }

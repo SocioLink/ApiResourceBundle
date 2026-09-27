@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
 
-{{ uses_block | raw }}
+{% if uses_block %}
+{{ uses_block|raw }}
 
+{% endif %}
 /**
  * DTO de mise à jour partielle pour l'entité {{ entity_name }} — opération PATCH.
  *
@@ -14,5 +18,5 @@ namespace {{ namespace }};
  */
 class {{ entity_name }}UpdateDto
 {
-{{ props_block | raw }}
+{{ props_block|raw }}
 }

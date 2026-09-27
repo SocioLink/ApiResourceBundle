@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Console;
+    namespace SocioLink\ApiResourceBundle\Console;
 
     use InvalidArgumentException;
 

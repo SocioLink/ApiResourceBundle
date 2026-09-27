@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
 
 /**
  * DTO de mise à jour pour le champ '{{ field_name }}' de l'entité {{ entity_name }}.
- * Endpoint : PATCH /api/{{ uri_name }}/{id}/{{ field_kebab }}.
+ * Endpoint : PATCH /{{ uri_name }}/{id}/{{ uri_segment }}.
  *
  * @see {{ entity_name }}{{ pascal_name }}Processor
  */

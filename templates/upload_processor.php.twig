@@ -1,60 +1,73 @@
 <?php
 
+declare(strict_types=1);
+
 namespace {{ namespace }};
-{{ uses_block | raw }}
+
+{{ uses_block|raw }}
 
 /**
  * Processor d'upload pour la propriété '{{ field_name }}' de l'entité {{ entity_name }}.
- * Endpoint : PATCH /api/{{ entity_name }}/{id}/{{ uri_segment }} (multipart/form-data).
+ * Endpoint : PATCH /{{ uri_name }}/{id}/{{ uri_segment }} (multipart/form-data, champ « {{ field_name }} »).
+ *
+ * L'opération est déclarée avec `read: true` et `deserialize: false` : $data est l'entité existante.
  *
  * @implements ProcessorInterface<{{ entity_name }}, {{ entity_name }}>
-* @see {{ dto_class }}
-*/
-readonly class {{ entity_name }}Upload{{ prop_suffix }}Processor implements ProcessorInterface
+ *
+ * @see {{ dto_class }}
+ */
+final readonly class {{ entity_name }}Upload{{ prop_suffix }}Processor implements ProcessorInterface
 {
-public function __construct(
-#[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')] private ProcessorInterface $persistProcessor,
-private ValidatorInterface $validator
-) {}
+    public function __construct(
+        #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
+        private ProcessorInterface $persistProcessor,
+        private ValidatorInterface $validator,
+    ) {}
 
-/**
-* @param {{ entity_name }} $data Données/Objet transmis
-* @param Operation $operation Type d'opération sur la requête
-* @param array|string|mixed $uriVariables Variables de l'URL
-* @param array|string|mixed $context Contexte de la requête ApiPlatform
-*
-* @return {{ entity_name }}
-*/
-final public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
-{
-$entity = $data;
+    /**
+     * @param mixed                $data         Entité chargée par API Platform
+     * @param Operation            $operation    Opération API Platform (PATCH multipart)
+     * @param array<string, mixed> $uriVariables Variables de l'URL
+     * @param array<string, mixed> $context      Contexte de la requête API Platform
+     *
+     * @return {{ entity_name }}
+     *
+     * @throws BadRequestHttpException si l'entité, la requête ou le fichier manque
+     * @throws ApiValidationException  si le fichier ne respecte pas les contraintes du DTO
+     */
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
+    {
+        if (!$data instanceof {{ entity_name }}) {
+            throw new BadRequestHttpException('{{ entity_name }} introuvable.');
+        }
 
-if (!$entity instanceof {{ entity_name }}) {
-throw new BadRequestHttpException('{{ entity_name }} non trouvé');
-}
+        $request = $context['request'] ?? null;
 
-$request = $context['request'] ?? null;
-if (!$request instanceof Request) {
-throw new BadRequestHttpException('Requête non trouvée');
-}
+        if (!$request instanceof Request) {
+            throw new BadRequestHttpException('Requête introuvable.');
+        }
 
-$file = $request->files->get('{{ field_name }}');
-if (!$file) {
-throw new BadRequestHttpException('Fichier "{{ field_name }}" manquant');
-}
+        $file = $request->files->get('{{ field_name }}');
 
-// Validation manuelle du DTO
-$dto = new {{ dto_class }}();
-$dto->{{ field_name }} = $file;
-$errors = $this->validator->validate($dto);
+        if (!$file instanceof UploadedFile) {
+            throw new BadRequestHttpException('Fichier « {{ field_name }} » manquant.');
+        }
 
-if (count($errors) > 0) {
-throw new BadRequestHttpException((string) $errors->get(0)->getMessage());
-}
+        /* Les contraintes #[Assert\File] portées par le DTO sont vérifiées avant toute modification de l'entité. */
+        $dto = new {{ dto_class }}();
+        $dto->{{ field_name }} = $file;
 
-$entity->set{{ field_name|capitalize }}($file){% if has_updated_at %}
-    ->setUpdatedAt(new DateTimeImmutable()){% endif %};
+        $errors = $this->validator->validate($dto);
 
-return $this->persistProcessor->process($entity, $operation, $uriVariables, $context);
-}
+        if (count($errors) > 0) {
+            throw new ApiValidationException($errors);
+        }
+
+        $data->{{ field_setter }}($file);
+{% if has_updated_at %}
+        $data->setUpdatedAt(new DateTimeImmutable());
+{% endif %}
+
+        return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+    }
 }

@@ -9,7 +9,7 @@
 
     declare(strict_types=1);
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Source;
+    namespace SocioLink\ApiResourceBundle\Source;
 
     /**
      * Transforme les champs d'une entité Doctrine en DÉFINITIONS de paramètres API Platform
@@ -35,28 +35,19 @@
      *  - 'key'        : clé du paramètre = nom d'URL (peut contenir le placeholder :property)
      *  - 'property'   : propriété ciblée (kinds à propriété unique), null sinon
      *  - 'properties' : propriétés ciblées (exists / sort), liste vide sinon
+     *  - 'sample'     : valeur d'exemple pour les tests générés (première valeur d'une énumération), facultative
+     *
+     * Les champs exclus et le tri sur les relations ToOne se règlent par la configuration
+     * (`filters.excluded_fields`, `filters.sort_on_to_one_relations`).
+     *
+     * @phpstan-type FilterDefinition array{kind: string, key: string, property: string|null, properties: list<string>, sample?: string}
+     * @phpstan-type QueryExample array{label: string, query: array<string, mixed>}
      *
      * @internal Réservé à l'usage interne de la commande generate:resource.
      */
-    final class FilterDefinitionBuilder {
-        /**
-         * Champs exclus des filtres ET du tri.
-         *
-         * Vide par défaut : le contrat historique est conservé (createdAt, status, itDeleted…
-         * restent filtrables). Y ajouter par exemple 'createdBy', 'deletedBy', 'erasedBy' pour ne pas
-         * exposer les auteurs des opérations système.
-         *
-         * @var list<string>
-         */
-        public const array EXCLUDED_FIELDS = [];
-
-        /**
-         * Autorise le tri sur les relations ToOne.
-         *
-         * false par défaut : trier sur la clé étrangère (souvent un UUID) n'a pas de sens métier.
-         * Le mettre à true rétablit l'ancien comportement (order[author]=asc).
-         */
-        public const bool SORT_ON_TO_ONE_RELATIONS = false;
+    final readonly class FilterDefinitionBuilder {
+        /* Sans configuration (tests unitaires) : aucun champ exclu, pas de tri sur les relations ToOne. */
+        public function __construct(private ?GeneratorConfig $config = null) {}
 
         /**
          * Types Doctrine exclus de tout filtre (hors ExistsFilter si le champ est nullable).
@@ -116,16 +107,23 @@
          *
          * Retour : liste de définitions (liste vide si aucun champ n'est filtrable).
          */
+        /**
+         * @param array<array-key, array<string, mixed>> $fields
+         *
+         * @return list<FilterDefinition>
+         */
         public function buildDefinitions(array $fields): array {
-            $definitions = [];
-            $existsProps = [];
-            $sortProps   = [];
+            $definitions    = [];
+            $existsProps    = [];
+            $sortProps      = [];
+            $excludedFields = $this->config->filterExcludedFields ?? [];
+            $sortOnToOne    = $this->config->sortOnToOneRelations ?? false;
 
             foreach ($fields as $fieldName => $info) {
                 $fieldName = (string)$fieldName; /* les clés numériques éventuelles sont ramenées en chaîne */
 
                 /* La clé primaire n'est jamais filtrable ni triable ; les champs exclus non plus. */
-                if ($fieldName === 'id' || in_array($fieldName, self::EXCLUDED_FIELDS, true)) {
+                if ($fieldName === 'id' || in_array($fieldName, $excludedFields, true)) {
                     continue;
                 }
 
@@ -142,7 +140,7 @@
                         $existsProps[] = $fieldName;
                     }
 
-                    if (self::SORT_ON_TO_ONE_RELATIONS) {
+                    if ($sortOnToOne) {
                         $sortProps[] = $fieldName;
                     }
 
@@ -168,7 +166,14 @@
                     default                                    => 'exact',
                 };
 
-                $definitions[] = $this->single($kind, $fieldName);
+                $definition = $this->single($kind, $fieldName);
+
+                /* Énumération : l'exemple de test doit être une valeur autorisée (sinon la requête est rejetée). */
+                if ($kind === 'exact' && is_array($info['enumCases'] ?? null) && $info['enumCases'] !== []) {
+                    $definition['sample'] = (string)$info['enumCases'][0];
+                }
+
+                $definitions[] = $definition;
                 $sortProps[]   = $fieldName;
             }
 
@@ -193,6 +198,11 @@
          * Paramètre $indent      : indentation ajoutée devant chaque ligne.
          *
          * Retour : liste de lignes (sans fin de ligne).
+         */
+        /**
+         * @param list<FilterDefinition> $definitions
+         *
+         * @return list<string>
          */
         public function renderParameters(array $definitions, string $indent = ''): array {
             $lines = [];
@@ -226,6 +236,7 @@
                         '    properties: [' . implode(', ', array_map($this->quote(...), $definition['properties'])) . '],',
                         '),',
                     ],
+                    default                        => [],
                 };
 
                 foreach ($block as $line) {
@@ -241,6 +252,11 @@
          *
          * Liste vide si aucune définition : aucun import de filtre ni de QueryParameter n'est alors
          * nécessaire (déduplication et tri inclus).
+         */
+        /**
+         * @param list<FilterDefinition> $definitions
+         *
+         * @return list<string>
          */
         public function requiredFqcns(array $definitions): array {
             if ($definitions === []) {
@@ -260,6 +276,7 @@
                     'numeric' => [$ns . 'ChainFilter', $ns . 'ComparisonFilter', $ns . 'ExactFilter'],
                     'exists'  => [$ns . 'ExistsFilter'],
                     'sort'    => [$ns . 'SortFilter'],
+                    default   => [],
                 }];
             }
 
@@ -282,16 +299,21 @@
          *
          * Retour : ['valid' => list<array{label: string, query: array}>, 'invalid' => list<array{label: string, query: array}>]
          */
+        /**
+         * @param list<FilterDefinition> $definitions
+         *
+         * @return array{valid: list<QueryExample>, invalid: list<QueryExample>}
+         */
         public function buildQueryExamples(array $definitions): array {
             $valid   = [];
             $invalid = [];
 
             foreach ($definitions as $definition) {
-                $prop = $definition['property'];
+                $prop = (string)$definition['property'];
 
                 switch ($definition['kind']) {
                     case 'exact':
-                        $valid[] = ['label' => "exact {$prop}", 'query' => [$prop => 'test']];
+                        $valid[] = ['label' => "exact {$prop}", 'query' => [$prop => $definition['sample'] ?? 'test']];
                         break;
                     case 'uuid':
                         $valid[] = ['label' => "uuid {$prop}", 'query' => [$prop => '00000000-0000-7000-8000-000000000000']];
@@ -333,6 +355,9 @@
 
         /*
          * Fabrique une définition à propriété unique dont la clé est le nom de la propriété.
+         */
+        /**
+         * @return FilterDefinition
          */
         private function single(string $kind, string $fieldName): array {
             return ['kind' => $kind, 'key' => $fieldName, 'property' => $fieldName, 'properties' => []];

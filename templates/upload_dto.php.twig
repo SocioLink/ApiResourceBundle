@@ -1,8 +1,13 @@
 <?php
 
-namespace {{ namespace }};
-{{ uses_block | raw }}
+declare(strict_types=1);
 
+namespace {{ namespace }};
+
+{% if uses_block %}
+{{ uses_block|raw }}
+
+{% endif %}
 /**
  * DTO d'upload pour le champ '{{ field_name }}' de l'entité {{ entity_name }}.
  *
@@ -10,6 +15,6 @@ namespace {{ namespace }};
  */
 class {{ entity_name }}Upload{{ prop_suffix }}Dto
 {
-{{ assert_file_raw | raw }}
+{{ assert_file_raw|raw }}
     public File|null ${{ field_name }} = null;
 }

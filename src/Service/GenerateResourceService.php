@@ -1,15 +1,5 @@
 <?php
 
-
-    /*
-     * Copyright (c) 2026.
-     * Date: 27/08/2026 12:50
-     * Author: Xavier KONGOLO <xsompwe@gmail.com>
-     * Description:
-     */
-
-    declare(strict_types=1);
-
     /*
      * Copyright (c) 2026.
      * Date: 22/08/2026 14:12
@@ -17,22 +7,25 @@
      * Description: Orchestreur de la génération de ressources API Platform.
      */
 
-    namespace BlackSheep\Symfony\ApiResourceBundle\Service;
+    declare(strict_types=1);
 
-    use Exception;
+    namespace SocioLink\ApiResourceBundle\Service;
+
+    use Throwable;
+    use Doctrine\ORM\Mapping\ClassMetadata;
     use Doctrine\ORM\EntityManagerInterface;
     use Symfony\Component\Filesystem\Filesystem;
     use Symfony\Component\Console\Style\SymfonyStyle;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\DtoBuilder;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\TestBuilder;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\FieldAnalyser;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\ProviderBuilder;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\ProcessorBuilder;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\GenerationOptions;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\GeneratorConfig;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\NamespaceResolver;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\ResourceGeneratorInterface;
-    use BlackSheep\Symfony\ApiResourceBundle\Source\EntityAttributeInjector;
+    use SocioLink\ApiResourceBundle\Source\DtoBuilder;
+    use SocioLink\ApiResourceBundle\Source\TestBuilder;
+    use SocioLink\ApiResourceBundle\Source\FieldAnalyser;
+    use SocioLink\ApiResourceBundle\Source\ProviderBuilder;
+    use SocioLink\ApiResourceBundle\Source\ProcessorBuilder;
+    use SocioLink\ApiResourceBundle\Source\GenerationOptions;
+    use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
+    use SocioLink\ApiResourceBundle\Source\NamespaceResolver;
+    use SocioLink\ApiResourceBundle\Source\ResourceGeneratorInterface;
+    use SocioLink\ApiResourceBundle\Source\EntityAttributeInjector;
 
     /**
      * Orchestre la génération complète des artefacts API Platform pour une entité Doctrine.
@@ -66,28 +59,20 @@
         /* ── Nettoyage (--force --reinit) ─── */
 
         /**
-         * Supprime les répertoires et fichiers générés avant une régénération complète.
+         * Supprime les dossiers DTO et State de chaque entité donnée (jamais les dossiers racines :
+         * les artefacts des autres entités et le code écrit à côté sont préservés).
          *
-         * @param string|null  $entityClass FQCN de l'entité ciblée, ou null pour tout supprimer
+         * @param list<string> $entityClasses FQCN des entités traitées
          * @param SymfonyStyle $io
          */
-        public function cleanBeforeReinit(string|null $entityClass, SymfonyStyle $io): void {
-            if ($entityClass === null) {
-                $dtoDir   = $this->namespaceResolver->dtoRootDir();
-                $stateDir = $this->namespaceResolver->stateRootDir();
+        public function cleanBeforeReinit(array $entityClasses, SymfonyStyle $io): void {
+            foreach ($entityClasses as $entityClass) {
+                $dirs = [
+                    $this->namespaceResolver->namespaceToDir($this->namespaceResolver->getDtoNamespace($entityClass)),
+                    $this->namespaceResolver->namespaceToDir($this->namespaceResolver->getStateNamespace($entityClass)),
+                ];
 
-                foreach ([$dtoDir, $stateDir] as $dir) {
-                    if (is_dir($dir)) {
-                        $this->filesystem->remove($dir);
-                        $io->text(sprintf('  ✕ Supprimé : %s', $dir));
-                    }
-                }
-            }
-            else {
-                $dtoDir   = $this->namespaceResolver->namespaceToDir($this->namespaceResolver->getDtoNamespace($entityClass));
-                $stateDir = $this->namespaceResolver->namespaceToDir($this->namespaceResolver->getStateNamespace($entityClass));
-
-                foreach ([$dtoDir, $stateDir] as $dir) {
+                foreach ($dirs as $dir) {
                     if (is_dir($dir)) {
                         $this->filesystem->remove($dir);
                         $io->text(sprintf('  ✕ Supprimé : %s', $dir));
@@ -101,24 +86,43 @@
         /**
          * Traite une entité Doctrine et génère tous les artefacts requis selon les options.
          *
+         * Une erreur sur une entité est affichée et comptée, sans interrompre le traitement des autres.
+         *
          * @param string            $entityClass FQCN complet de l'entité
          * @param GenerationOptions $options     Options de génération actives
          * @param SymfonyStyle      $io
          *
-         * @return array<string, string|array<string, int>>
-         *
-         * @throws \Doctrine\ORM\Mapping\MappingException
-         * @throws \ReflectionException
+         * @return array<string, string|array{booleanCount: int, uploadCount: int}>
          */
         public function processEntity(string $entityClass, GenerationOptions $options, SymfonyStyle $io): array {
-            $result = ['entity' => 'error', '_stats' => ['booleanCount' => 0, 'uploadCount' => 0]];
-
             try {
                 $metadata = $this->entityManager->getClassMetadata($entityClass);
             }
-            catch (Exception) {
-                return $result;
+            catch (Throwable $e) {
+                $io->error(sprintf('%s : métadonnées Doctrine introuvables (%s).', $entityClass, $e->getMessage()));
+
+                return ['entity' => 'error', '_stats' => ['booleanCount' => 0, 'uploadCount' => 0]];
             }
+
+            try {
+                return $this->generate($entityClass, $metadata, $options, $io);
+            }
+            catch (Throwable $e) {
+                $io->error(sprintf('%s : échec de la génération (%s).', $entityClass, $e->getMessage()));
+
+                return ['entity' => 'error', '_stats' => ['booleanCount' => 0, 'uploadCount' => 0]];
+            }
+        }
+
+        /**
+         * Génère les artefacts d'une entité dont les métadonnées sont chargées.
+         *
+         * @param ClassMetadata<object> $metadata
+         *
+         * @return array<string, string|array{booleanCount: int, uploadCount: int}>
+         */
+        private function generate(string $entityClass, ClassMetadata $metadata, GenerationOptions $options, SymfonyStyle $io): array {
+            $result = [];
 
             /* ── Résolution des coordonnées ──────────────────────────────────────── */
             $entityName = $this->namespaceResolver->getShortClassName($entityClass);
@@ -129,7 +133,6 @@
 
             /* ── Analyse des champs ──────────────────────────────────────────────── */
             $fields       = $this->fieldAnalyser->getEntityFields($metadata);
-            $hasStatus    = isset($fields['status']);
             $hasUpdatedAt = isset($fields['updatedAt']);
             $uploadFields = $this->fieldAnalyser->detectUploadFields($entityClass);
 
@@ -141,7 +144,7 @@
             if ($options->subResources) {
                 $oneToManyFields = array_filter(
                     $fields,
-                    static fn(array $info): bool => $info['isRelation'] && ($info['isOneToMany'] ?? false),
+                    static fn(array $info): bool => $info['isRelation'] && $info['isOneToMany'],
                 );
             }
 
@@ -164,14 +167,14 @@
 
                 $result['createProcessor'] = $this->writeFile(
                     "{$stateDir}/{$entityName}CreateProcessor.php",
-                    $this->processorBuilder->buildCreateProcessor($entityClass, $entityName, $stateNs, $dtoNs, $fields),
+                    $this->processorBuilder->buildCreateProcessor($entityClass, $entityName, $stateNs, $dtoNs),
                     $options,
                     $io,
                 );
 
                 $result['updateProcessor'] = $this->writeFile(
                     "{$stateDir}/{$entityName}UpdateProcessor.php",
-                    $this->processorBuilder->buildUpdateProcessor($entityClass, $entityName, $stateNs, $dtoNs, $fields, $options),
+                    $this->processorBuilder->buildUpdateProcessor($entityClass, $entityName, $stateNs, $dtoNs),
                     $options,
                     $io,
                 );
@@ -251,7 +254,7 @@
 
                     $result['test'] = $this->writeFile(
                         "{$testDir}/{$entityName}ApiTest.php",
-                        $this->testBuilder->buildFunctionalTest($entityClass, $entityName, $testNs, $fields, $dtoNs),
+                        $this->testBuilder->buildFunctionalTest($entityClass, $entityName, $testNs, $fields),
                         $options,
                         $io,
                     );
@@ -259,19 +262,15 @@
 
                 /* Sous-ressources OneToMany (--sub-resources) */
                 if (!empty($oneToManyFields)) {
-                    $this->generateSubResources(
-                        $entityClass, $entityName, $stateNs, $dtoNs,
-                        $dtoDir, $stateDir, $oneToManyFields, $options, $io, $result,
-                    );
+                    $this->generateSubResources($entityClass, $entityName, $oneToManyFields, $options, $io, $result);
                 }
             }
 
             /* Injection #[ApiResource] dans l'entité */
             $result['entity'] = $this->entityAttributeInjector->injectAttributesIntoEntity(
-                entityClass : $entityClass, entityName: $entityName, fields: $fields,
-                dtoNs       : $dtoNs, stateNs: $stateNs, options: $options, io: $io,
-                hasStatus   : $hasStatus, booleanFields: [], allBooleanFields: $allBooleanFields,
-                uploadFields: $uploadFields,
+                entityClass     : $entityClass, entityName: $entityName, fields: $fields,
+                dtoNs           : $dtoNs, stateNs: $stateNs, options: $options, io: $io,
+                allBooleanFields: $allBooleanFields, uploadFields: $uploadFields,
             );
 
             /* Statistiques */
@@ -289,33 +288,25 @@
          *  - Un attribut #[ApiResource] sub-resource sur l'entité ENFANT (la cible)
          *    avec uriTemplate, uriVariables (Link) et GetCollection
          *
-         * @param string               $entityClass
-         * @param string               $entityName
-         * @param string               $stateNs
-         * @param string               $dtoNs
-         * @param string               $dtoDir
-         * @param string               $stateDir
-         * @param array<string, array> $oneToManyFields
-         * @param GenerationOptions    $options
-         * @param SymfonyStyle         $io
-         * @param array<string, mixed> $result
+         * @param string                                        $entityClass
+         * @param string                                        $entityName
+         * @param array<string, array<string, mixed>>           $oneToManyFields
+         * @param GenerationOptions                             $options
+         * @param SymfonyStyle                                  $io
+         * @param array<string, string|array<string, int>>      $result
          */
         private function generateSubResources(
             string            $entityClass,
             string            $entityName,
-            string            $stateNs,
-            string            $dtoNs,
-            string            $dtoDir,
-            string            $stateDir,
             array             $oneToManyFields,
             GenerationOptions $options,
             SymfonyStyle      $io,
             array             &$result,
         ): void {
             foreach ($oneToManyFields as $fieldName => $info) {
-                $targetClass = $info['doctrineType'];
+                $targetClass = (string)$info['doctrineType'];
                 $targetShort = $this->namespaceResolver->getShortClassName($targetClass);
-                $mappedBy    = $info['mappedBy'] ?? lcfirst($entityName);
+                $mappedBy    = (string)($info['mappedBy'] ?? '') !== '' ? (string)$info['mappedBy'] : lcfirst($entityName);
 
                 /*
                  * Champs de l'entité ENFANT : la sous-ressource reprend ses paramètres de filtrage
@@ -325,7 +316,7 @@
                 try {
                     $targetFields = $this->fieldAnalyser->getEntityFields($this->entityManager->getClassMetadata($targetClass));
                 }
-                catch (Exception) {
+                catch (Throwable) {
                     $targetFields = [];
                 }
 
