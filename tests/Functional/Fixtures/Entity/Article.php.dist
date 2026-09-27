@@ -1,0 +1,75 @@
+<?php
+
+declare(strict_types=1);
+
+namespace __NS__\Entity;
+
+use __NS__\Enum\ArticleStatus;
+use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\HttpFoundation\File\File;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Constraints as AssertPhone;
+use Vich\UploaderBundle\Mapping\Attribute as Vich;
+
+#[ORM\Entity]
+class Article
+{
+    public const int TITLE_MAX = 120;
+
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
+
+    /* Groupe mixte : seul Assert\* doit être recopié dans les DTOs, jamais ORM\Column. */
+    #[ORM\Column(length: 120), Assert\NotBlank, Assert\Length(max: self::TITLE_MAX)]
+    private string $title = '';
+
+    /* Contrainte sous un alias d'espace de noms : le DTO doit importer l'alias. */
+    #[ORM\Column(nullable: true)]
+    #[AssertPhone\Regex(pattern: '/^\+?\d+$/')]
+    private ?string $phone = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
+    private string $price = '0.00';
+
+    #[ORM\Column(nullable: true)]
+    private ?float $rating = null;
+
+    #[ORM\Column]
+    private bool $published = false;
+
+    #[ORM\Column(enumType: ArticleStatus::class)]
+    private ArticleStatus $status = ArticleStatus::Draft;
+
+    #[ORM\Column(type: 'guid', nullable: true)]
+    private ?string $reference = null;
+
+    #[ORM\Column]
+    private DateTimeImmutable $createdAt;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $updatedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: Author::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private Author $author;
+
+    /** @var Collection<int, Comment> */
+    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'article')]
+    private Collection $comments;
+
+    #[Vich\UploadableField(mapping: 'article_image', fileNameProperty: 'imageName')]
+    #[Assert\Image(maxSize: '2M')]
+    private ?File $imageFile = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?string $imageName = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new DateTimeImmutable();
+        $this->comments  = new ArrayCollection();
+    }
+}

@@ -1,0 +1,30 @@
+        /*
+         * Soft-delete (itDeleted) :
+         *  - true  = suppression logique — enregistre deletedBy ;
+         *  - false = restauration — réservée à l'auteur de la suppression, impossible si la ressource est écrasée.
+         */
+        if ($data->itDeleted !== null) {
+            if ($data->itDeleted === false && $entity->isItErased()) {
+                throw new AppUnprocessableException('Impossible de restaurer une ressource qui a été écrasée.');
+            }
+
+            if ($data->itDeleted === false && $entity->isItDeleted() === true) {
+                $currentUser = $this->security->getUser();
+                $deletedBy   = $entity->getDeletedBy();
+
+                if ($currentUser === null || $deletedBy === null || $currentUser->getUserIdentifier() !== $deletedBy->getUserIdentifier()) {
+                    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut la restaurer.");
+                }
+            }
+
+            $oldValue = $entity->isItDeleted();
+            $entity->setItDeleted($data->itDeleted);
+
+            if ($data->itDeleted === true && $oldValue === false) {
+                $entity->setDeletedBy($this->security->getUser());
+            }
+
+            if ($data->itDeleted === false) {
+                $entity->setDeletedBy(null);
+            }
+        }

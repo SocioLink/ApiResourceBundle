@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace __NS__\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
+
+#[ORM\Entity]
+final class Author
+{
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
+
+    #[ORM\Column]
+    #[Assert\NotBlank]
+    private string $name = '';
+
+    #[ORM\Column]
+    #[Assert\Email]
+    private string $email = '';
+
+    #[ORM\Column]
+    private bool $active = true;
+
+    #[ORM\Column]
+    private bool $itDeleted = false;
+
+    #[ORM\Column]
+    private bool $itErased = false;
+}

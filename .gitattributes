@@ -1,0 +1,10 @@
+# Fins de ligne LF dans le dépôt comme dans la copie de travail (Windows compris).
+* text=auto eol=lf
+
+# Exclus de l'archive distribuée par Composer (`composer require` ne télécharge que le bundle).
+/.github            export-ignore
+/tests              export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/phpstan.dist.neon  export-ignore
+/phpunit.xml.dist   export-ignore

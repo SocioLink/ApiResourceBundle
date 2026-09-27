@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+namespace __NS__\Entity;
+
+use DateTimeImmutable;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+class Comment
+{
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    private ?int $id = null;
+
+    #[ORM\Column(type: 'text')]
+    private string $body = '';
+
+    #[ORM\ManyToOne(targetEntity: Article::class, inversedBy: 'comments')]
+    private ?Article $article = null;
+
+    #[ORM\Column]
+    private bool $published = false;
+
+    #[ORM\Column]
+    private bool $itDeleted = false;
+
+    #[ORM\Column]
+    private bool $itErased = false;
+
+    #[ORM\ManyToOne(targetEntity: Author::class)]
+    private ?Author $deletedBy = null;
+
+    #[ORM\ManyToOne(targetEntity: Author::class)]
+    private ?Author $erasedBy = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $deletedAt = null;
+}

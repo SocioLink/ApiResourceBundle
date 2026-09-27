@@ -1,0 +1,37 @@
+        /*
+         * Soft-erase (itErased) :
+         *  - true  = écrasement — nécessite itDeleted = true au préalable, par l'auteur de la suppression ;
+         *  - false = restauration — réservée au rôle {{ admin_role|raw }}.
+         */
+        if ($data->itErased !== null) {
+            $currentUser = $this->security->getUser();
+
+            if ($data->itErased === true && !$entity->isItDeleted()) {
+                throw new AppUnprocessableException("La ressource doit d'abord être supprimée avant d'être écrasée.");
+            }
+
+            if ($data->itErased === true) {
+                $deletedBy = $entity->getDeletedBy();
+
+                if ($currentUser === null || $deletedBy === null || $currentUser->getUserIdentifier() !== $deletedBy->getUserIdentifier()) {
+                    throw new AppAccessDeniedException("Seul l'utilisateur ayant supprimé cette ressource peut l'écraser.");
+                }
+            }
+
+            if ($data->itErased === false && !$this->security->isGranted({{ admin_role|json_encode|raw }})) {
+                throw new AppAccessDeniedException('Seul un administrateur peut restaurer une ressource écrasée.');
+            }
+
+            $oldValue = $entity->isItErased();
+            $entity->setItErased($data->itErased);
+
+            if ($data->itErased === false && $oldValue === true) {
+                $entity->setItDeleted(false);
+                $entity->setDeletedBy(null);
+                $entity->setErasedBy(null);
+            }
+
+            if ($data->itErased === true && $oldValue === false) {
+                $entity->setErasedBy($currentUser);
+            }
+        }
