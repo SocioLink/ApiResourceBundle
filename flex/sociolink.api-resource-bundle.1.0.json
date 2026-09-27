@@ -43,6 +43,8 @@
                         "        # update_system_fields:                 # champs exclus de l'UpdateDto",
                         "        #     [details, createdAt, updatedAt, deletedAt, erasedAt, createdBy, updatedBy, deletedBy, erasedBy]",
                         "        # boolean_special_fields: [itDeleted, itErased]  # booléens à logique soft-delete / soft-erase",
+                        "        # custom_types: {}                      # types Doctrine personnalisés → classe PHP hydratée,",
+                        "        #                                       # ex. { money: App\\ValueObject\\Money } ; phone_number est prédéfini",
                         "        # filters:",
                         "        #     excluded_fields: []              # champs exclus des filtres et du tri",
                         "        #     sort_on_to_one_relations: false  # autorise order[author]=asc",
@@ -54,7 +56,7 @@
                     "executable": false
                 }
             },
-            "ref": "7d3774ecc69766af423b458108f7d04d7068972f"
+            "ref": "fbf4a3dab4bfe8a09854296d31dff585de230745"
         }
     }
 }

@@ -29,12 +29,16 @@
 	use ReflectionClass;
 	use RecursiveIteratorIterator;
 	use RecursiveDirectoryIterator;
+	use libphonenumber\PhoneNumber;
+	use libphonenumber\PhoneNumberUtil;
+	use libphonenumber\PhoneNumberFormat;
 	use PHPUnit\Framework\TestCase;
 	use ApiPlatform\Metadata\ApiResource;
 	use Symfony\Component\Filesystem\Filesystem;
 	use Symfony\Component\Console\Command\Command;
 	use Symfony\Bundle\FrameworkBundle\Console\Application;
 	use Symfony\Component\Console\Tester\CommandTester;
+	use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 	/**
 	 * Enregistre le bundle dans un noyau Symfony, exécute `generate:resource` dans chaque mode sur un
@@ -205,6 +209,43 @@
 			$this->assertStringContainsString('public float|null $rating = null;', $dto);
 			$this->assertStringContainsString('public string $price;', $dto);
 			$this->assertStringContainsString('public string|null $reference = null;', $dto); /* guid : chaîne côté Doctrine */
+		}
+
+		public function testPhoneNumberTypeIsTypedAsPhoneNumberEverywhere(): void {
+			/* Un DTO typé string ferait échouer le setter de l'entité (TypeError) : le DTO doit porter l'objet hydraté. */
+			$create = self::src('DTO/Article/ArticleCreateDto.php');
+			$update = self::src('DTO/Article/ArticleUpdateDto.php');
+
+			$this->assertStringContainsString('use libphonenumber\PhoneNumber;', $create);
+			$this->assertStringContainsString('public PhoneNumber $mobile;', $create);
+			$this->assertStringContainsString('use libphonenumber\PhoneNumber;', $update);
+			$this->assertStringContainsString('public PhoneNumber|null $mobile = null;', $update);
+
+			$this->assertStringContainsString("'+33612345678'", (string)file_get_contents(self::$projectDir . '/tests/Functional/Article/ArticleApiTest.php'));
+			$this->assertStringNotContainsString('phone_number', self::$runs['article']['display'], 'phone_number ne doit plus être signalé comme non reconnu.');
+		}
+
+		public function testStringFieldsGetAPartialFilterButEnumsAndCustomTypesStayExact(): void {
+			$entity = self::src('Entity/Article.php');
+
+			$this->assertStringContainsString("'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),", $entity);
+			$this->assertStringContainsString("'status' => new QueryParameter(filter: new ExactFilter(), property: 'status'),", $entity);
+			$this->assertStringContainsString("'mobile' => new QueryParameter(filter: new ExactFilter(), property: 'mobile'),", $entity);
+			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;', $entity);
+		}
+
+		public function testPhoneNumberPayloadIsDenormalizedIntoTheGeneratedDtos(): void {
+			/* Serializer réel + normaliseur d'odolbeau/phone-number-bundle : la chaîne JSON devient un PhoneNumber. */
+			$serializer = self::$kernel->getContainer()->get('test.serializer');
+			$this->assertInstanceOf(DenormalizerInterface::class, $serializer);
+
+			foreach (['ArticleCreateDto', 'ArticleUpdateDto'] as $dto) {
+				$class = self::$rootNamespace . "\\DTO\\Article\\{$dto}";
+				$data  = $serializer->denormalize(['mobile' => '+33612345678'], $class);
+
+				$this->assertInstanceOf(PhoneNumber::class, $data->mobile, $dto);
+				$this->assertSame('+33612345678', PhoneNumberUtil::getInstance()->format($data->mobile, PhoneNumberFormat::E164), $dto);
+			}
 		}
 
 		public function testUpdateDtoAcceptsOmittedFields(): void {

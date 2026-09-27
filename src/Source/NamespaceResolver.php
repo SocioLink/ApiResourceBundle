@@ -49,7 +49,9 @@
 		 * Exemple : 'App\Entity\Blog\Article' → 'Article'
 		 */
 		public function getShortClassName(string $class): string {
-			return substr($class, (int)strrpos($class, '\\') + 1); /* strrpos : DERNIER séparateur ; (int) couvre une classe sans namespace */
+			$position = strrpos($class, '\\'); /* DERNIER séparateur */
+
+			return $position === false ? $class : substr($class, $position + 1);
 		}
 
 		/*

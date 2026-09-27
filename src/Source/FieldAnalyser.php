@@ -81,7 +81,7 @@
 
 		private Parser|null $parser = null;
 
-		public function __construct(private readonly NamespaceResolver $namespaceResolver) {}
+		public function __construct(private readonly NamespaceResolver $namespaceResolver, private readonly GeneratorConfig $config) {}
 
 		/**
 		 * @return list<string> Types non reconnus (ex. ['App\Doctrine\MoneyType'])
@@ -185,9 +185,18 @@
 		 *
 		 * @param string $doctrineType Identifiant de type Doctrine
 		 *
-		 * @return string Type PHP natif (ex. 'string', 'int', 'float', 'bool', 'DateTimeImmutable', 'Uuid', 'array')
+		 * Un type personnalisé déclaré dans GeneratorConfig::$customTypes (ex. `phone_number`) donne le nom court de
+		 * sa classe, que l'appelant importe via customTypeClass().
+		 *
+		 * @return string Type PHP (ex. 'string', 'int', 'float', 'bool', 'DateTimeImmutable', 'Uuid', 'array', 'PhoneNumber')
 		 */
 		public function toPhpType(string $doctrineType): string {
+			$customClass = $this->customTypeClass($doctrineType);
+
+			if ($customClass !== null) {
+				return $this->namespaceResolver->getShortClassName($customClass);
+			}
+
 			$type = match ($doctrineType) {
 				Types::STRING, Types::TEXT, Types::ASCII_STRING, Types::DECIMAL,
 				Types::GUID                                             => 'string', /* guid est hydraté en chaîne par Doctrine */
@@ -210,6 +219,13 @@
 			$this->unrecognizedTypes[$doctrineType] = true;
 
 			return 'string';
+		}
+
+		/**
+		 * FQCN de la classe hydratée par un type Doctrine personnalisé déclaré, ou null (type standard ou inconnu).
+		 */
+		public function customTypeClass(string $doctrineType): string|null {
+			return $this->config->customTypes[$doctrineType] ?? null;
 		}
 
 		/* ── Détection des champs uploadables (VichUploader) ─── */

@@ -32,6 +32,12 @@ installation actuelle) ou `api-platform/core` (qui remplace ces composants). Les
 composer require --dev api-platform/test
 ```
 
+Le bundle reconnaît sans configuration le type Doctrine `phone_number`
+d'[odolbeau/phone-number-bundle](https://github.com/odolbeau/phone-number-bundle) (`^4.2`, voir
+[Types Doctrine personnalisés](#types-doctrine-personnalisés)). Ce bundle n'est **pas** une dépendance
+obligatoire : seuls les projets qui stockent des numéros de téléphone l'installent, en `require`, car
+leurs entités en dépendent aussi en production.
+
 ## Installation
 
 ```bash
@@ -185,7 +191,8 @@ déprécié depuis API Platform 4.4, n'est jamais généré) :
 
 | Champ Doctrine                    | Filtre généré                                      | Requête                        |
 |-----------------------------------|----------------------------------------------------|--------------------------------|
-| `string`, énumération, type perso | `ExactFilter`                                      | `?name=Chair`                  |
+| `string`, `ascii_string`          | `PartialSearchFilter` (sous-chaîne, sans casse)    | `?name=chai` → `%chai%`        |
+| énumération, type personnalisé    | `ExactFilter`                                      | `?status=draft`                |
 | `uuid` / `guid` (hors `id`)       | `UuidFilter`                                       | `?reference=<uuid>`            |
 | `boolean`                         | `ExactFilter` (schéma booléen)                     | `?active=true`                 |
 | `integer`, `float`, `decimal`     | `ChainFilter` (`ExactFilter` + `ComparisonFilter`) | `?price=25` · `?price[gte]=10` |
@@ -196,6 +203,12 @@ déprécié depuis API Platform 4.4, n'est jamais généré) :
 
 Exclus de tout filtre : `id`, `text`, `json`, `array`, `simple_array`, `blob`, `binary`, `dateinterval`,
 ainsi que les champs listés dans `filters.excluded_fields`.
+
+Une chaîne est recherchée par sous-chaîne (`LOWER(champ) LIKE LOWER('%valeur%')`, avec `%` et `_`
+échappés). Une énumération (colonne `string` avec `enumType`) reste en égalité stricte, car ses valeurs
+sont fermées. Un type personnalisé (`phone_number`…) aussi, car sa valeur en base est une conversion de
+l'objet PHP. Sur une grande table, une recherche `LIKE '%…%'` ne peut pas utiliser d'index B-tree :
+excluez au besoin le champ (`filters.excluded_fields`).
 
 ## Configuration
 
@@ -225,6 +238,8 @@ sociolink_api_resource:
     boolean_special_fields: # booléens à logique soft-delete / soft-erase
         - itDeleted
         - itErased
+    custom_types          : # types Doctrine personnalisés → classe PHP hydratée (phone_number est prédéfini)
+        money: App\ValueObject\Money
     filters               :
         excluded_fields         : [ ]              # champs exclus des filtres et du tri (ex. createdBy)
         sort_on_to_one_relations: false  # autorise order[author]=asc
@@ -233,6 +248,22 @@ sociolink_api_resource:
 
 Pour surcharger un gabarit, copiez-le depuis `templates/` du bundle dans `templates_directory` : les
 gabarits absents du dossier de surcharge restent ceux du bundle.
+
+### Types Doctrine personnalisés
+
+Un type Doctrine standard est converti vers son type PHP (`string`, `int`, `DateTimeImmutable`, `Uuid`…).
+Un type inconnu est traité comme une chaîne, et la commande le signale par un avertissement. Or si Doctrine
+hydrate ce type en **objet**, un DTO typé `string` fait échouer le setter de l'entité (`TypeError`) :
+déclarez alors la classe hydratée dans `custom_types`, et le DTO sera typé et importé en conséquence.
+
+`phone_number` ([odolbeau/phone-number-bundle](https://github.com/odolbeau/phone-number-bundle)) est
+**prédéfini** : les DTOs typent le champ en `libphonenumber\PhoneNumber`. Le normaliseur de ce bundle
+(activé dès que le Serializer de Symfony est installé) convertit la chaîne JSON reçue
+(`"+33612345678"`) en objet, puis le numéro est ressérialisé au format E.164. Les tests générés utilisent
+`+33612345678` comme valeur d'exemple. Une entrée de `custom_types` peut redéfinir un type prédéfini.
+
+Pour un autre type objet, le projet doit fournir un dénormaliseur (chaîne JSON → objet), faute de quoi
+API Platform rejette la requête.
 
 ## Structure des fichiers générés
 

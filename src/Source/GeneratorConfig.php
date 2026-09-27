@@ -70,6 +70,22 @@
 		 */
 		public const array DEFAULT_BOOLEAN_SPECIAL_FIELDS = ['itDeleted', 'itErased'];
 
+		/**
+		 * Types Doctrine personnalisés reconnus sans configuration : nom du type → classe PHP hydratée.
+		 * `phone_number` : odolbeau/phone-number-bundle (Misd\PhoneNumberBundle\Doctrine\DBAL\Types\PhoneNumberType).
+		 *
+		 * @var array<string, string>
+		 */
+		public const array DEFAULT_CUSTOM_TYPES = ['phone_number' => 'libphonenumber\\PhoneNumber'];
+
+		/**
+		 * Types Doctrine personnalisés : nom du type → FQCN de la classe hydratée (DEFAULT_CUSTOM_TYPES complétés
+		 * ou redéfinis par la configuration `custom_types`).
+		 *
+		 * @var array<string, string>
+		 */
+		public array $customTypes;
+
 		/** Racine PSR-4 du projet (ex. 'App'), sans antislash final. */
 		public string $rootNamespace;
 
@@ -101,10 +117,11 @@
 		 * Paramètre $sortOnToOneRelations : autorise le tri sur les relations ToOne (order[author]=asc).
 		 */
 		/**
-		 * @param list<string> $systemFields
-		 * @param list<string> $updateSystemFields
-		 * @param list<string> $booleanSpecialFields
-		 * @param list<string> $filterExcludedFields
+		 * @param list<string>          $systemFields
+		 * @param list<string>          $updateSystemFields
+		 * @param list<string>          $booleanSpecialFields
+		 * @param list<string>          $filterExcludedFields
+		 * @param array<string, string> $customTypes Types Doctrine personnalisés ajoutés ou redéfinis (nom → FQCN)
 		 */
 		public function __construct(
 			string             $projectDir,
@@ -122,6 +139,7 @@
 			public string|null $templatesDirectory = null,
 			public array       $filterExcludedFields = [],
 			public bool        $sortOnToOneRelations = false,
+			array              $customTypes = [],
 		) {
 			$this->projectDir      = rtrim(str_replace('\\', '/', $projectDir), '/');
 			$this->rootNamespace   = trim($rootNamespace, '\\');
@@ -129,5 +147,6 @@
 			$this->dtoNamespace    = $this->rootNamespace . '\\' . trim($dtoNamespace, '\\');
 			$this->stateNamespace  = $this->rootNamespace . '\\' . trim($stateNamespace, '\\');
 			$this->testNamespace   = trim($testNamespace, '\\');
+			$this->customTypes     = array_map(static fn(string $class): string => ltrim($class, '\\'), $customTypes + self::DEFAULT_CUSTOM_TYPES);
 		}
 	}

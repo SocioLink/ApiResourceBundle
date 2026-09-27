@@ -395,7 +395,7 @@ PHP;
 			$this->injectSub(GenerationOptions::fromFlags(), ['id' => $this->field('uuid'), 'body' => $this->field('string')]);
 			$source = (string)file_get_contents($path);
 
-			$this->assertStringContainsString("'body' => new QueryParameter(filter: new ExactFilter(), property: 'body'),", $source);
+			$this->assertStringContainsString("'body' => new QueryParameter(filter: new PartialSearchFilter(), property: 'body'),", $source);
 			$this->assertSame('skipped', $this->injectSub(GenerationOptions::fromFlags(), ['id' => $this->field('uuid')]));
 
 			$this->injectSub(GenerationOptions::fromFlags(force: true), ['id' => $this->field('uuid'), 'title' => $this->field('string')]);

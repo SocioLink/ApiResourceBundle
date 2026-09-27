@@ -229,7 +229,11 @@
 				$unrecognizedTypes = $this->fieldAnalyser->getUnrecognizedTypes();
 
 				if ($unrecognizedTypes !== []) {
-					$io->warning(sprintf('Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs.', implode(', ', $unrecognizedTypes)));
+					$io->warning(sprintf(
+						             'Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs. '
+						             . 'Si Doctrine les hydrate en objets, déclarez leur classe dans sociolink_api_resource.custom_types (ex. %s: App\ValueObject\Money).',
+						             implode(', ', $unrecognizedTypes), $unrecognizedTypes[0],
+					             ));
 				}
 
 				$this->fieldAnalyser->resetUnrecognizedTypes();

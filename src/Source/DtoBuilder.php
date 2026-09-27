@@ -159,6 +159,7 @@
 
 				$needsDt   = $needsDt || $phpType === 'DateTimeImmutable';
 				$needsUuid = $needsUuid || $phpType === 'Uuid';
+				array_push($uses, ...$this->customTypeUses($info['doctrineType']));
 
 				$extracted = $assertMap[$fieldName] ?? [];
 				$attrBlock = '';
@@ -298,6 +299,7 @@
 
 				$needsDt   = $needsDt || $phpType === 'DateTimeImmutable';
 				$needsUuid = $needsUuid || $phpType === 'Uuid';
+				array_push($uses, ...$this->customTypeUses($info['doctrineType']));
 
 				$extracted = $this->relaxForPartialUpdate($assertMap[$fieldName] ?? []);
 				$attrBlock = '';
@@ -316,7 +318,8 @@
 				$statusType = $this->fieldAnalyser->toPhpType($fields['status']['doctrineType']);
 				$needsDt    = $needsDt || $statusType === 'DateTimeImmutable';
 				$needsUuid  = $needsUuid || $statusType === 'Uuid';
-				$props[]    = "    public {$statusType}|null \$status = null;\n";
+				array_push($uses, ...$this->customTypeUses($fields['status']['doctrineType']));
+				$props[] = "    public {$statusType}|null \$status = null;\n";
 			}
 
 			if ($needsEntityImport) {
@@ -587,6 +590,19 @@
 			}
 
 			return $relaxed;
+		}
+
+		/*
+		 * Import de la classe hydratée par un type Doctrine personnalisé (ex. `phone_number` → libphonenumber\PhoneNumber),
+		 * vide pour un type standard.
+		 */
+		/**
+		 * @return list<string>
+		 */
+		private function customTypeUses(string $doctrineType): array {
+			$class = $this->fieldAnalyser->customTypeClass($doctrineType);
+
+			return $class === null ? [] : ["use {$class};"];
 		}
 
 		/**

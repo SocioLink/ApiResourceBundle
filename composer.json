@@ -30,6 +30,7 @@
   "require-dev": {
     "ext-pdo_sqlite": "*",
     "api-platform/test": "^5.0",
+    "odolbeau/phone-number-bundle": "^4.2",
     "phpstan/phpstan": "^2.1.30",
     "phpstan/phpstan-symfony": "^2.0",
     "phpunit/phpunit": "^11.0",
@@ -37,6 +38,7 @@
     "symfony/yaml": "^7.4 || ^8.0"
   },
   "suggest": {
+    "odolbeau/phone-number-bundle": "Type Doctrine phone_number, reconnu sans configuration : DTOs générés typés libphonenumber\\PhoneNumber",
     "api-platform/test": "Requis par les tests fonctionnels générés avec --with-tests (ApiPlatform\\Test\\ApiTestCase)"
   },
   "scripts": {

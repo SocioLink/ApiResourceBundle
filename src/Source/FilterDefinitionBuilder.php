@@ -14,7 +14,8 @@
 	 *
 	 * Description: Classification des champs Doctrine en paramètres de filtrage API Platform (#[QueryParameter] attachés à
 	 *              GetCollection), en remplacement des #[ApiFilter] dépréciés depuis API Platform 4.4.
-	 *              Correspondance : chaîne, énumération ou type personnalisé → ExactFilter ; uuid/guid → UuidFilter ;
+	 *              Correspondance : chaîne (string, ascii_string) → PartialSearchFilter ; énumération ou type
+	 *              personnalisé → ExactFilter ; uuid/guid → UuidFilter ;
 	 *              booléen → ExactFilter à schéma booléen ; numérique → ChainFilter(ExactFilter + ComparisonFilter) ;
 	 *              date/heure → DateFilter ; relation ToOne → IriFilter ; relation ToMany ou champ nullable → ExistsFilter
 	 *              groupé ; tri → SortFilter groupé.
@@ -38,7 +39,8 @@
 	 *
 	 * Correspondance avec le contrat d'URL historique (voir migration-audit.md, annexe 12) :
 	 *
-	 *  - string, énumération, type personnalisé : ExactFilter                     ?name=Chair
+	 *  - string, ascii_string (hors énumération) : PartialSearchFilter          ?name=chai (LIKE %chai%, sans casse)
+	 *  - énumération, type personnalisé         : ExactFilter                     ?status=draft
 	 *  - uuid / guid (hors id)                  : UuidFilter                      ?ref=<uuid>
 	 *  - boolean                                : ExactFilter (schéma booléen)    ?active=true
 	 *  - integer / float / decimal              : ChainFilter(Exact + Comparison) ?price=25 · ?price[gte]=10
@@ -48,7 +50,7 @@
 	 *  - tri                                    : SortFilter                      ?order[name]=asc
 	 *
 	 * Structure d'une définition :
-	 *  - 'kind'       : exact | uuid | boolean | numeric | date | iri | exists | sort
+	 *  - 'kind'       : partial | exact | uuid | boolean | numeric | date | iri | exists | sort
 	 *  - 'key'        : clé du paramètre = nom d'URL (peut contenir le placeholder :property)
 	 *  - 'property'   : propriété ciblée (kinds à propriété unique), null sinon
 	 *  - 'properties' : propriétés ciblées (exists / sort), liste vide sinon
@@ -100,15 +102,24 @@
 		private const array UUID_TYPES = ['uuid', 'guid', 'uuid_binary'];
 
 		/**
+		 * Types Doctrine chaîne recherchés par sous-chaîne (PartialSearchFilter), hors énumérations.
+		 * `decimal` est numérique ; `text` est exclu de tout filtre (SKIP_TYPES).
+		 *
+		 * @var list<string>
+		 */
+		private const array PARTIAL_TYPES = ['string', 'ascii_string'];
+
+		/**
 		 * Classe de filtre (nom court) associée à chaque kind à propriété unique.
 		 *
 		 * @var array<string, string>
 		 */
 		private const array KIND_TO_FILTER = [
-			'exact' => 'ExactFilter',
-			'uuid'  => 'UuidFilter',
-			'date'  => 'DateFilter',
-			'iri'   => 'IriFilter',
+			'partial' => 'PartialSearchFilter',
+			'exact'   => 'ExactFilter',
+			'uuid'    => 'UuidFilter',
+			'date'    => 'DateFilter',
+			'iri'     => 'IriFilter',
 		];
 
 		/* ── Classification ─── */
@@ -175,18 +186,21 @@
 					continue;
 				}
 
+				$isEnum = is_array($info['enumCases'] ?? null) && $info['enumCases'] !== [];
+
 				$kind = match (true) {
-					in_array($type, self::DATE_TYPES, true)    => 'date',
-					$type === 'boolean'                        => 'boolean',
-					in_array($type, self::NUMERIC_TYPES, true) => 'numeric',
-					in_array($type, self::UUID_TYPES, true)    => 'uuid',
-					default                                    => 'exact',
+					in_array($type, self::DATE_TYPES, true)                => 'date',
+					$type === 'boolean'                                    => 'boolean',
+					in_array($type, self::NUMERIC_TYPES, true)             => 'numeric',
+					in_array($type, self::UUID_TYPES, true)                => 'uuid',
+					in_array($type, self::PARTIAL_TYPES, true) && !$isEnum => 'partial', /* énumération : valeur fermée, égalité stricte */
+					default                                                => 'exact',
 				};
 
 				$definition = $this->single($kind, $fieldName);
 
 				/* Énumération : l'exemple de test doit être une valeur autorisée (sinon la requête est rejetée). */
-				if ($kind === 'exact' && is_array($info['enumCases'] ?? null) && $info['enumCases'] !== []) {
+				if ($kind === 'exact' && $isEnum) {
 					$definition['sample'] = (string)$info['enumCases'][0];
 				}
 
@@ -229,31 +243,31 @@
 				$prop = $definition['property'] !== null ? $this->quote($definition['property']) : '';
 
 				$block = match ($definition['kind']) {
-					'exact', 'uuid', 'date', 'iri' => [
+					'partial', 'exact', 'uuid', 'date', 'iri' => [
 						"{$key} => new QueryParameter(filter: new " . self::KIND_TO_FILTER[$definition['kind']] . "(), property: {$prop}),",
 					],
-					'boolean'                      => [
+					'boolean'                                 => [
 						"{$key} => new QueryParameter(",
+						"    schema: ['type' => 'boolean'],",
 						'    filter: new ExactFilter(),',
 						"    property: {$prop},",
-						"    schema: ['type' => 'boolean'],",
-						'    castToNativeType: true,',
 						'    castToArray: false,',
+						'    castToNativeType: true,',
 						'),',
 					],
-					'numeric'                      => [
+					'numeric'                                 => [
 						"{$key} => new QueryParameter(",
 						'    filter: new ChainFilter([new ExactFilter(), new ComparisonFilter(new ExactFilter())]),',
 						"    property: {$prop},",
 						'),',
 					],
-					'exists', 'sort'               => [
+					'exists', 'sort'                          => [
 						"{$key} => new QueryParameter(",
 						'    filter: new ' . ($definition['kind'] === 'exists' ? 'ExistsFilter' : 'SortFilter') . '(),',
 						'    properties: [' . implode(', ', array_map($this->quote(...), $definition['properties'])) . '],',
 						'),',
 					],
-					default                        => [],
+					default                                   => [],
 				};
 
 				foreach ($block as $line) {
@@ -286,6 +300,7 @@
 			foreach ($definitions as $definition) {
 				$fqcns = [
 					...$fqcns, ...match ($definition['kind']) {
+						'partial' => [$ns . 'PartialSearchFilter'],
 						'exact'   => [$ns . 'ExactFilter'],
 						'uuid'    => [$ns . 'UuidFilter'],
 						'date'    => [$ns . 'DateFilter'],
@@ -331,6 +346,9 @@
 				$prop = (string)$definition['property'];
 
 				switch ($definition['kind']) {
+					case 'partial':
+						$valid[] = ['label' => "partial {$prop}", 'query' => [$prop => 'test']];
+						break;
 					case 'exact':
 						$valid[] = ['label' => "exact {$prop}", 'query' => [$prop => $definition['sample'] ?? 'test']];
 						break;

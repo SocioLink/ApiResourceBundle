@@ -136,6 +136,7 @@
 				in_array($type, ['time', 'time_immutable'], true)                                                                         => "'12:00:00'",
 				in_array($type, ['uuid', 'guid', 'uuid_binary'], true)                                                                    => "'00000000-0000-7000-8000-000000000000'",
 				in_array($type, ['json', 'array', 'simple_array', 'json_array'], true)                                                    => '[]',
+				$type === 'phone_number'                                                                                                  => "'+33612345678'", /* E.164, valide pour libphonenumber */
 				default                                                                                                                   => var_export("test_{$fieldName}", true),
 			};
 		}

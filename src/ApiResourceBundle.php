@@ -30,10 +30,10 @@
 	namespace SocioLink\ApiResourceBundle;
 
 	use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-	use Symfony\Component\Config\Definition\Builder\TreeBuilder;
-	use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 	use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
 	use Symfony\Component\DependencyInjection\ContainerBuilder;
+	use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+	use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 	use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 	use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
@@ -68,43 +68,49 @@
 			/** @var ArrayNodeDefinition<TreeBuilder<'array'>> $root Typé NodeDefinition par Symfony 7.4.0. */
 			$root = $definition->rootNode();
 			$root->children()
-			           ->scalarNode('root_namespace')->defaultValue('App')->cannotBeEmpty()->info('Racine PSR-4 du projet.')->end()
-			           ->scalarNode('source_dir')->defaultValue('src')->cannotBeEmpty()->info('Dossier des sources, relatif au projet.')->end()
-			           ->scalarNode('entity_namespace')->defaultValue('Entity')->cannotBeEmpty()->info('Espace de noms des entités, relatif à root_namespace.')->end()
-			           ->scalarNode('dto_namespace')->defaultValue('DTO')->cannotBeEmpty()->info('Espace de noms des DTOs générés, relatif à root_namespace.')->end()
-			           ->scalarNode('state_namespace')->defaultValue('State')->cannotBeEmpty()->info('Espace de noms des Processors/Providers générés, relatif à root_namespace.')->end()
-			           ->arrayNode('tests')
-			           ->addDefaultsIfNotSet()
-			           ->children()
-			           ->scalarNode('namespace')->defaultValue('App\\Tests\\Functional')->cannotBeEmpty()->info('Espace de noms absolu des tests générés.')->end()
-			           ->scalarNode('directory')->defaultValue('tests/Functional')->cannotBeEmpty()->info('Dossier des tests générés, relatif au projet.')->end()
-			           ->end()
-			           ->end()
-			           ->scalarNode('admin_role')->defaultValue('ROLE_ADMIN')->cannotBeEmpty()->info('Rôle requis pour lever un soft-erase (itErased).')->end()
-			           ->arrayNode('system_fields')
-			           ->info('Champs exclus du CreateDto.')
-			           ->scalarPrototype()->end()
-			           ->defaultValue(GeneratorConfig::DEFAULT_SYSTEM_FIELDS)
-			           ->end()
-			           ->arrayNode('update_system_fields')
-			           ->info('Champs exclus de l\'UpdateDto.')
-			           ->scalarPrototype()->end()
-			           ->defaultValue(GeneratorConfig::DEFAULT_UPDATE_SYSTEM_FIELDS)
-			           ->end()
-			           ->arrayNode('boolean_special_fields')
-			           ->info('Booléens à logique soft-delete/soft-erase (restauration contrôlée par l\'auteur ou l\'admin).')
-			           ->scalarPrototype()->end()
-			           ->defaultValue(GeneratorConfig::DEFAULT_BOOLEAN_SPECIAL_FIELDS)
-			           ->end()
-			           ->arrayNode('filters')
-			           ->addDefaultsIfNotSet()
-			           ->children()
-			           ->arrayNode('excluded_fields')->info('Champs exclus des paramètres de filtrage et de tri.')->scalarPrototype()->end()->defaultValue([])->end()
-			           ->booleanNode('sort_on_to_one_relations')->defaultFalse()->info('Autorise le tri sur les relations ToOne (order[author]=asc).')->end()
-			           ->end()
-			           ->end()
-			           ->scalarNode('templates_directory')->defaultNull()->info('Dossier de gabarits Twig prioritaires (surcharge), relatif au projet ou absolu.')->end()
-			           ->end();
+			     ->scalarNode('root_namespace')->defaultValue('App')->cannotBeEmpty()->info('Racine PSR-4 du projet.')->end()
+			     ->scalarNode('source_dir')->defaultValue('src')->cannotBeEmpty()->info('Dossier des sources, relatif au projet.')->end()
+			     ->scalarNode('entity_namespace')->defaultValue('Entity')->cannotBeEmpty()->info('Espace de noms des entités, relatif à root_namespace.')->end()
+			     ->scalarNode('dto_namespace')->defaultValue('DTO')->cannotBeEmpty()->info('Espace de noms des DTOs générés, relatif à root_namespace.')->end()
+			     ->scalarNode('state_namespace')->defaultValue('State')->cannotBeEmpty()->info('Espace de noms des Processors/Providers générés, relatif à root_namespace.')->end()
+			     ->arrayNode('tests')
+			     ->addDefaultsIfNotSet()
+			     ->children()
+			     ->scalarNode('namespace')->defaultValue('App\\Tests\\Functional')->cannotBeEmpty()->info('Espace de noms absolu des tests générés.')->end()
+			     ->scalarNode('directory')->defaultValue('tests/Functional')->cannotBeEmpty()->info('Dossier des tests générés, relatif au projet.')->end()
+			     ->end()
+			     ->end()
+			     ->scalarNode('admin_role')->defaultValue('ROLE_ADMIN')->cannotBeEmpty()->info('Rôle requis pour lever un soft-erase (itErased).')->end()
+			     ->arrayNode('system_fields')
+			     ->info('Champs exclus du CreateDto.')
+			     ->scalarPrototype()->end()
+			     ->defaultValue(GeneratorConfig::DEFAULT_SYSTEM_FIELDS)
+			     ->end()
+			     ->arrayNode('update_system_fields')
+			     ->info('Champs exclus de l\'UpdateDto.')
+			     ->scalarPrototype()->end()
+			     ->defaultValue(GeneratorConfig::DEFAULT_UPDATE_SYSTEM_FIELDS)
+			     ->end()
+			     ->arrayNode('boolean_special_fields')
+			     ->info('Booléens à logique soft-delete/soft-erase (restauration contrôlée par l\'auteur ou l\'admin).')
+			     ->scalarPrototype()->end()
+			     ->defaultValue(GeneratorConfig::DEFAULT_BOOLEAN_SPECIAL_FIELDS)
+			     ->end()
+			     ->arrayNode('custom_types')
+			     ->info('Types Doctrine personnalisés → classe PHP hydratée (phone_number → libphonenumber\PhoneNumber est prédéfini).')
+			     ->useAttributeAsKey('type')
+			     ->scalarPrototype()->cannotBeEmpty()->end()
+			     ->defaultValue([])
+			     ->end()
+			     ->arrayNode('filters')
+			     ->addDefaultsIfNotSet()
+			     ->children()
+			     ->arrayNode('excluded_fields')->info('Champs exclus des paramètres de filtrage et de tri.')->scalarPrototype()->end()->defaultValue([])->end()
+			     ->booleanNode('sort_on_to_one_relations')->defaultFalse()->info('Autorise le tri sur les relations ToOne (order[author]=asc).')->end()
+			     ->end()
+			     ->end()
+			     ->scalarNode('templates_directory')->defaultNull()->info('Dossier de gabarits Twig prioritaires (surcharge), relatif au projet ou absolu.')->end()
+			     ->end();
 		}
 
 		/* ── Chargement des services ─── */
@@ -116,6 +122,7 @@
 		 *     root_namespace: string, source_dir: string, entity_namespace: string, dto_namespace: string,
 		 *     state_namespace: string, tests: array{namespace: string, directory: string}, admin_role: string,
 		 *     system_fields: list<string>, update_system_fields: list<string>, boolean_special_fields: list<string>,
+		 *     custom_types: array<string, string>,
 		 *     filters: array{excluded_fields: list<string>, sort_on_to_one_relations: bool},
 		 *     templates_directory: string|null
 		 * } $config
@@ -139,6 +146,7 @@
 				                 '$templatesDirectory'   => $config['templates_directory'],
 				                 '$filterExcludedFields' => $config['filters']['excluded_fields'],
 				                 '$sortOnToOneRelations' => $config['filters']['sort_on_to_one_relations'],
+				                 '$customTypes'          => $config['custom_types'],
 			                 ]);
 
 			$container->import('../config/services.php');

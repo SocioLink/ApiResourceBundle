@@ -9,6 +9,7 @@ use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use libphonenumber\PhoneNumber;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Constraints as AssertPhone;
@@ -30,6 +31,10 @@ class Article
     #[ORM\Column(nullable: true)]
     #[AssertPhone\Regex(pattern: '/^\+?\d+$/')]
     private ?string $phone = null;
+
+    /* Type Doctrine personnalisé prédéfini (odolbeau/phone-number-bundle) : hydraté en objet PhoneNumber. */
+    #[ORM\Column(type: 'phone_number')]
+    private PhoneNumber $mobile;
 
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     private string $price = '0.00';

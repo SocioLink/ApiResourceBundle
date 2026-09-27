@@ -25,7 +25,10 @@
 
 	use Doctrine\ORM\EntityManager;
 	use Doctrine\ORM\ORMSetup;
+	use Doctrine\DBAL\Types\Type;
 	use Doctrine\DBAL\DriverManager;
+	use Misd\PhoneNumberBundle\MisdPhoneNumberBundle;
+	use Misd\PhoneNumberBundle\Doctrine\DBAL\Types\PhoneNumberType;
 	use Doctrine\ORM\EntityManagerInterface;
 	use Symfony\Component\HttpKernel\Kernel;
 	use SocioLink\ApiResourceBundle\ApiResourceBundle;
@@ -52,11 +55,17 @@
 			$config = ORMSetup::createAttributeMetadataConfig([$entityDir], true);
 			$config->enableNativeLazyObjects(true);
 
+			/* Type personnalisé prédéfini (odolbeau/phone-number-bundle), enregistré comme le fait DoctrineBundle dans un projet. */
+			if (!Type::hasType(PhoneNumberType::NAME)) {
+				Type::addType(PhoneNumberType::NAME, PhoneNumberType::class);
+			}
+
 			return new EntityManager(DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true], $config), $config);
 		}
 
 		public function registerBundles(): iterable {
 			yield new FrameworkBundle();
+			yield new MisdPhoneNumberBundle(); /* normaliseur chaîne ↔ PhoneNumber */
 			yield new ApiResourceBundle();
 		}
 
@@ -81,9 +90,13 @@
 					'handle_all_throwables' => true,
 					'router'                => ['resource' => '%kernel.project_dir%/config/routes.php'], /* jamais chargé : aucune requête HTTP */
 					'php_errors'            => ['log' => true],
+					'serializer'            => ['enabled' => true],
 				]);
 
 				$container->loadFromExtension('sociolink_api_resource', $this->bundleConfig);
+
+				/* Serializer exposé au test : dénormalisation d'un payload JSON dans un DTO généré. */
+				$container->setAlias('test.serializer', 'serializer')->setPublic(true);
 
 				$container->register(EntityManagerInterface::class, EntityManagerInterface::class)
 				          ->setFactory([self::class, 'createEntityManager'])

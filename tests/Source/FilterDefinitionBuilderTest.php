@@ -54,6 +54,9 @@
             return [
                 'id'        => $this->field('uuid'),
                 'name'      => $this->field('string'),
+                'code'      => $this->field('ascii_string'),
+                'status'    => ['enumCases' => ['draft', 'published']] + $this->field('string'), /* colonne string avec enumType */
+                'mobile'    => $this->field('phone_number'),                                    /* type personnalisé */
                 'active'    => $this->field('boolean'),
                 'price'     => $this->field('decimal'),
                 'createdAt' => $this->field('datetime_immutable'),
@@ -73,7 +76,10 @@
             $definitions = new FilterDefinitionBuilder()->buildDefinitions($this->fields());
             $kinds       = array_column($definitions, 'kind', 'key');
 
-            $this->assertSame('exact', $kinds['name']);
+            $this->assertSame('partial', $kinds['name']);
+            $this->assertSame('partial', $kinds['code']);
+            $this->assertSame('exact', $kinds['status']); /* énumération : valeur fermée */
+            $this->assertSame('exact', $kinds['mobile']); /* type personnalisé : pas de LOWER(...) LIKE */
             $this->assertSame('boolean', $kinds['active']);
             $this->assertSame('numeric', $kinds['price']);
             $this->assertSame('date', $kinds['createdAt']);
@@ -106,7 +112,7 @@
             $definitions = new FilterDefinitionBuilder()->buildDefinitions($this->fields());
             $sort        = array_values(array_filter($definitions, static fn(array $d): bool => $d['kind'] === 'sort'))[0];
 
-            $this->assertSame(['name', 'active', 'price', 'createdAt', 'deletedAt', 'reference'], $sort['properties']);
+            $this->assertSame(['name', 'code', 'status', 'mobile', 'active', 'price', 'createdAt', 'deletedAt', 'reference'], $sort['properties']);
         }
 
         public function testEntityWithoutFilterableFieldProducesNoDefinition(): void {
@@ -123,7 +129,7 @@
             /* TOKEN_PARSE lève une ParseError si le code généré est syntaxiquement invalide. */
             $this->assertNotEmpty(token_get_all($code, TOKEN_PARSE));
 
-            $this->assertStringContainsString("'name' => new QueryParameter(filter: new ExactFilter(), property: 'name'),", $code);
+            $this->assertStringContainsString("'name' => new QueryParameter(filter: new PartialSearchFilter(), property: 'name'),", $code);
             $this->assertStringContainsString("filter: new ChainFilter([new ExactFilter(), new ComparisonFilter(new ExactFilter())]),", $code);
             $this->assertStringContainsString("schema: ['type' => 'boolean'],", $code);
             $this->assertStringContainsString("'exists[:property]' => new QueryParameter(", $code);
@@ -143,7 +149,7 @@
             $builder = new FilterDefinitionBuilder();
             $fqcns   = $builder->requiredFqcns($builder->buildDefinitions($this->fields()));
 
-            foreach (['QueryParameter', 'ExactFilter', 'ChainFilter', 'ComparisonFilter', 'DateFilter', 'UuidFilter', 'IriFilter', 'ExistsFilter', 'SortFilter'] as $short) {
+            foreach (['QueryParameter', 'PartialSearchFilter', 'ExactFilter', 'ChainFilter', 'ComparisonFilter', 'DateFilter', 'UuidFilter', 'IriFilter', 'ExistsFilter', 'SortFilter'] as $short) {
                 $this->assertTrue(
                     count(array_filter($fqcns, static fn(string $f): bool => str_ends_with($f, '\\' . $short))) === 1,
                     "Import manquant ou en double : {$short}",
@@ -160,6 +166,8 @@
             $examples = $builder->buildQueryExamples($builder->buildDefinitions($this->fields()));
             $queries  = array_column($examples['valid'], 'query', 'label');
 
+            $this->assertSame(['name' => 'test'], $queries['partial name']);
+            $this->assertSame(['status' => 'draft'], $queries['exact status']);
             $this->assertSame(['exists' => ['deletedAt' => 'true']], $queries['exists deletedAt']);
             $this->assertSame(['price' => ['gte' => '1']], $queries['numeric price gte']);
             $this->assertSame(['createdAt' => ['after' => '2020-01-01']], $queries['date createdAt after']);
