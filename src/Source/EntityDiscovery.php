@@ -55,7 +55,7 @@
 		 *
 		 * @return list<string>|null Liste d'un FQCN, ou null si l'argument est invalide (l'erreur est affichée)
 		 */
-		public function resolveEntityArgument(string $arg, SymfonyStyle $io): ?array {
+		public function resolveEntityArgument(string $arg, SymfonyStyle $io): array|null {
 			$arg = ltrim($arg, '\\'); /* « \App\Entity\Article » est un FQCN valide */
 
 			if (!str_starts_with($arg, $this->config->rootNamespace . '\\')) {

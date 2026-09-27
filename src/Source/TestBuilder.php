@@ -67,12 +67,7 @@
 		/**
 		 * @param array<string, array<string, mixed>> $fields
 		 */
-		public function buildFunctionalTest(
-			string $entityClass,
-			string $entityName,
-			string $testNs,
-			array  $fields,
-		): string {
+		public function buildFunctionalTest(string $entityClass, string $entityName, string $testNs, array $fields): string {
 			/* routePrefix (ex. '/blog') + segment pluralisé : l'URL réelle de la collection. */
 			$uriBase = ltrim($this->namespaceResolver->getRoutePrefix($entityClass) . '/' . $this->namespaceResolver->toApiPlatformUriBase($entityName), '/');
 

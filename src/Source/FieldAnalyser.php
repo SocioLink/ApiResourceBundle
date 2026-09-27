@@ -79,7 +79,7 @@
 		 */
 		private array $unrecognizedTypes = [];
 
-		private ?Parser $parser = null;
+		private Parser|null $parser = null;
 
 		public function __construct(private readonly NamespaceResolver $namespaceResolver) {}
 
@@ -108,6 +108,7 @@
 		 * @param ClassMetadata<object> $metadata
 		 *
 		 * @return array<string, FieldInfo>
+		 * @throws \Doctrine\ORM\Mapping\MappingException
 		 */
 		public function getEntityFields(ClassMetadata $metadata): array {
 			$fields = [];
@@ -190,22 +191,15 @@
 			$type = match ($doctrineType) {
 				Types::STRING, Types::TEXT, Types::ASCII_STRING, Types::DECIMAL,
 				Types::GUID                                             => 'string', /* guid est hydraté en chaîne par Doctrine */
-
 				Types::INTEGER, Types::SMALLINT, Types::BIGINT          => 'int',
-
 				Types::FLOAT, Types::SMALLFLOAT                         => 'float',
-
 				Types::BOOLEAN                                          => 'bool',
-
 				Types::DATETIME_MUTABLE, Types::DATETIME_IMMUTABLE,
 				Types::DATETIMETZ_MUTABLE, Types::DATETIMETZ_IMMUTABLE,
 				Types::DATE_MUTABLE, Types::DATE_IMMUTABLE,
 				Types::TIME_MUTABLE, Types::TIME_IMMUTABLE              => 'DateTimeImmutable',
-
 				'uuid', 'uuid_binary'                                   => 'Uuid', /* types symfony/doctrine-bridge */
-
 				Types::JSON, Types::SIMPLE_ARRAY, 'json_array', 'array' => 'array',
-
 				default                                                 => null,
 			};
 

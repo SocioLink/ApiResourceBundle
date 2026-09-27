@@ -104,11 +104,7 @@
 		 * $namespaceResolver fournit le chemin du fichier entité et les segments d'URI ; $filterBuilder classifie
 		 * les champs en paramètres de filtrage ; $config identifie les espaces de noms des artefacts générés.
 		 */
-		public function __construct(
-			private NamespaceResolver       $namespaceResolver,
-			private FilterDefinitionBuilder $filterBuilder,
-			private GeneratorConfig         $config,
-		) {}
+		public function __construct(private NamespaceResolver $namespaceResolver, private FilterDefinitionBuilder $filterBuilder, private GeneratorConfig $config) {}
 
 		/* ── Point d'entrée : ressource principale ─── */
 
@@ -148,11 +144,12 @@
 			/* Sans --force, on ne réécrit jamais un fichier déjà traité : les personnalisations manuelles sont préservées. */
 			if (($hasMainResource || $hasLegacyFilters) && !$options->force) {
 				if ($hasLegacyFilters) {
-					$io->note(sprintf(
-						          '%s : #[ApiFilter] hérité détecté (déprécié, supprimé en API Platform 6.0). '
-						          . 'Migrez avec « bin/console api:upgrade-filter » ou régénérez avec --force.',
-						          $entityName,
-					          ));
+					$io->note(
+						sprintf(
+							'%s : #[ApiFilter] hérité détecté (déprécié, supprimé en API Platform 6.0). '
+							. 'Migrez avec « bin/console api:upgrade-filter » ou régénérez avec --force.', $entityName,
+						)
+					);
 				}
 
 				return 'skipped';
@@ -204,17 +201,7 @@
 		/**
 		 * @param array<string, array<string, mixed>> $targetFields
 		 */
-		public function injectSubResourceAttributes(
-			string            $parentClass,
-			string            $parentName,
-			string            $targetClass,
-			string            $targetName,
-			string            $fieldName,
-			string            $mappedBy,
-			GenerationOptions $options,
-			SymfonyStyle      $io,
-			array             $targetFields = [],
-		): string {
+		public function injectSubResourceAttributes(string $parentClass, string $parentName, string $targetClass, string $targetName, string $mappedBy, GenerationOptions $options, SymfonyStyle $io, array $targetFields = []): string {
 			$filePath = $this->namespaceResolver->entityFilePath($targetClass);
 
 			if (!file_exists($filePath)) {
@@ -553,7 +540,9 @@
 
 				if ($addedUses !== []) {
 					$io->newLine(2);
-					$io->write(implode("\n", array_map('trim', $addedUses)));
+					array_map('trim', $addedUses)
+					|> (static fn($x) => implode("\n", $x))
+					|> $io(...);
 				}
 
 				$io->newLine();
@@ -674,13 +663,7 @@
 		 * Indique si l'entité porte un #[ApiResource] PRINCIPAL (hors sous-ressource générée).
 		 */
 		private function hasMainApiResource(string $source, string $entityName): bool {
-			foreach ($this->findClassAttributes($source, $entityName, 'ApiResource') as $attribute) {
-				if (!$this->isSubResourceAttribute($attribute['text'])) {
-					return true;
-				}
-			}
-
-			return false;
+			return array_any($this->findClassAttributes($source, $entityName, 'ApiResource'), fn($attribute) => !$this->isSubResourceAttribute($attribute['text']));
 		}
 
 		/*
@@ -812,7 +795,11 @@
 				}
 			}
 
-			return ($pos < $len && $source[$pos] === ']') ? $pos + 1 : null;
+			if ($pos < $len && $source[$pos] === ']') {
+				return $pos + 1;
+			}
+
+			return null;
 		}
 
 		/* ── Tokenisation : déclaration de classe et imports ─── */
@@ -836,8 +823,8 @@
 				$offset      += strlen(is_array($token) ? $token[1] : $token);
 			}
 
-			for ($i = 0; $i < $count; $i++) {
-				if (!is_array($tokens[$i]) || $tokens[$i][0] !== T_CLASS) {
+			foreach ($tokens as $i => $iValue) {
+				if (!is_array($iValue) || $iValue[0] !== T_CLASS) {
 					continue;
 				}
 
@@ -890,7 +877,11 @@
 			$lineStart = $lineBreak === false ? 0 : $lineBreak + 1;
 			$prefix    = substr($source, $lineStart, $declStart - $lineStart);
 
-			return trim($prefix) === '' ? [$lineStart, $prefix] : [$declStart, ''];
+			if (trim($prefix) === '') {
+				return [$lineStart, $prefix];
+			}
+
+			return [$declStart, ''];
 		}
 
 		/*
@@ -957,8 +948,8 @@
 			$depth = 0;
 			$last  = null;
 
-			for ($i = 0; $i < $count; $i++) {
-				$token = $tokens[$i];
+			foreach ($tokens as $i => $iValue) {
+				$token = $iValue;
 
 				if (!is_array($token)) {
 					if ($token === '{') {
@@ -990,7 +981,11 @@
 		 * Retourne la fin de ligne du fichier : "\r\n" s'il en contient, "\n" sinon.
 		 */
 		private function detectEol(string $source): string {
-			return str_contains($source, "\r\n") ? "\r\n" : "\n";
+			if (str_contains($source, "\r\n")) {
+				return "\r\n";
+			}
+
+			return "\n";
 		}
 
 		/*

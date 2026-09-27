@@ -652,10 +652,7 @@
 			 * proprement (substr) ; sinon (ligne moins indentée que prévu, cas limite)
 			 * on se contente d'un ltrim() défensif pour ne jamais produire d'indentation négative.
 			 */
-				static fn(string $line): string => '    ' . (
-					str_starts_with($line, $baseStr) ? substr($line, $base) : ltrim($line)
-					),
-				$lines,
+				static fn(string $line): string => '    ' . (str_starts_with($line, $baseStr) ? substr($line, $base) : ltrim($line)), $lines,
 			));
 		}
 	}

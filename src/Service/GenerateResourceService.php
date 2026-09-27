@@ -59,15 +59,9 @@
 		private Filesystem $filesystem;
 
 		public function __construct(
-			private NamespaceResolver       $namespaceResolver,
-			private FieldAnalyser           $fieldAnalyser,
-			private DtoBuilder              $dtoBuilder,
-			private ProcessorBuilder        $processorBuilder,
-			private ProviderBuilder         $providerBuilder,
-			private EntityAttributeInjector $entityAttributeInjector,
-			private TestBuilder             $testBuilder,
-			private EntityManagerInterface  $entityManager,
-			private GeneratorConfig         $config,
+			private NamespaceResolver      $namespaceResolver, private FieldAnalyser $fieldAnalyser, private DtoBuilder $dtoBuilder, private ProcessorBuilder $processorBuilder,
+			private ProviderBuilder        $providerBuilder, private EntityAttributeInjector $entityAttributeInjector, private TestBuilder $testBuilder,
+			private EntityManagerInterface $entityManager, private GeneratorConfig $config,
 		) {
 			$this->filesystem = new Filesystem();
 		}
@@ -311,14 +305,7 @@
 		 * @param SymfonyStyle                             $io
 		 * @param array<string, string|array<string, int>> $result
 		 */
-		private function generateSubResources(
-			string            $entityClass,
-			string            $entityName,
-			array             $oneToManyFields,
-			GenerationOptions $options,
-			SymfonyStyle      $io,
-			array             &$result,
-		): void {
+		private function generateSubResources(string $entityClass, string $entityName, array $oneToManyFields, GenerationOptions $options, SymfonyStyle $io, array &$result): void {
 			foreach ($oneToManyFields as $fieldName => $info) {
 				$targetClass = (string)$info['doctrineType'];
 				$targetShort = $this->namespaceResolver->getShortClassName($targetClass);
@@ -342,7 +329,6 @@
 					parentName  : $entityName,
 					targetClass : $targetClass,
 					targetName  : $targetShort,
-					fieldName   : $fieldName,
 					mappedBy    : $mappedBy,
 					options     : $options,
 					io          : $io,

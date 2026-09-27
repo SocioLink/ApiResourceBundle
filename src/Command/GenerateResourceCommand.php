@@ -78,13 +78,8 @@
 		public const string ALL_ENTITIES_ARGUMENT = '*';
 
 		public function __construct(
-			private readonly ResourceGeneratorInterface $generator,
-			private readonly EntityDiscoveryInterface   $entityDiscovery,
-			private readonly GenerationOptionsFactory   $optionsFactory,
-			private readonly EntitySelector             $entitySelector,
-			private readonly SummaryPrinter             $summaryPrinter,
-			private readonly GeneratorConfig            $config,
-			private readonly FieldAnalyser              $fieldAnalyser,
+			private readonly ResourceGeneratorInterface $generator, private readonly EntityDiscoveryInterface $entityDiscovery, private readonly GenerationOptionsFactory $optionsFactory,
+			private readonly EntitySelector             $entitySelector, private readonly SummaryPrinter $summaryPrinter, private readonly GeneratorConfig $config, private readonly FieldAnalyser $fieldAnalyser,
 		) {
 			parent::__construct();
 		}
@@ -152,10 +147,12 @@
 				/* ── Sans argument : menu dans un terminal, erreur sinon ─── */
 				if ($entityArg === null) {
 					if (!$input->isInteractive()) {
-						$io->error(sprintf(
-							           'Aucune entité indiquée et aucun terminal disponible pour le menu. Précisez une entité ou « %s » pour toutes les entités.',
-							           self::ALL_ENTITIES_ARGUMENT,
-						           ));
+						$io->error(
+							sprintf(
+								'Aucune entité indiquée et aucun terminal disponible pour le menu. Précisez une entité ou « %s » pour toutes les entités.',
+								self::ALL_ENTITIES_ARGUMENT,
+							)
+						);
 
 						return Command::FAILURE;
 					}
@@ -197,10 +194,10 @@
 				 * Destructif (ces dossiers peuvent contenir du code écrit à la main) : confirmation demandée dans un terminal.
 				 */
 				if ($options->force && $options->reinit && !$options->isReadOnly()) {
-					$confirmed = !$input->isInteractive() || $io->confirm(sprintf(
-						                                                      '--reinit va supprimer les dossiers DTO et State de %d entité(s), y compris les fichiers écrits à la main. Continuer ?',
-						                                                      count($entityClasses),
-					                                                      ), false);
+					$confirmed = !$input->isInteractive() || $entityClasses
+					                                         |> count(...)
+					                                         |> (static fn($x) => sprintf('--reinit va supprimer les dossiers DTO et State de %d entité(s), y compris les fichiers écrits à la main. Continuer ?', $x))
+					                                         |> (static fn($x) => $io->confirm($x, false));
 
 					if (!$confirmed) {
 						$io->warning('Opération annulée.');
@@ -232,17 +229,20 @@
 				$unrecognizedTypes = $this->fieldAnalyser->getUnrecognizedTypes();
 
 				if ($unrecognizedTypes !== []) {
-					$io->warning(sprintf(
-						             'Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs.',
-						             implode(', ', $unrecognizedTypes),
-					             ));
+					implode(', ', $unrecognizedTypes)
+					|> (static fn($x) => sprintf('Types Doctrine non reconnus (fallback sur string) : %s. Ces types seront traités comme des chaînes dans les DTOs.', $x))
+					|> $io(...);
 				}
 
 				$this->fieldAnalyser->resetUnrecognizedTypes();
 
 				$errors = $this->summaryPrinter->print($io, $results, $total, $options);
 
-				return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
+				if ($errors > 0) {
+					return Command::FAILURE;
+				}
+
+				return Command::SUCCESS;
 			}
 			catch (Throwable $e) {
 				$io->newLine(2);

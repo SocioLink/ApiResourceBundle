@@ -141,8 +141,8 @@ PHP;
 
 		private function inject(string $name, array $fields, GenerationOptions $options): string {
 			return $this->injector->injectAttributesIntoEntity(
-				entityClass: "App\\Entity\\{$name}", entityName: $name, fields: $fields,
-				dtoNs      : "App\\DTO\\{$name}", stateNs: "App\\State\\{$name}", options: $options, io: $this->io,
+				entityClass     : "App\\Entity\\{$name}", entityName: $name, fields: $fields,
+				dtoNs           : "App\\DTO\\{$name}", stateNs: "App\\State\\{$name}", options: $options, io: $this->io,
 				allBooleanFields: [], uploadFields: [],
 			);
 		}
@@ -150,7 +150,7 @@ PHP;
 		private function injectSub(GenerationOptions $options, array $childFields): string {
 			return $this->injector->injectSubResourceAttributes(
 				parentClass: 'App\Entity\Article', parentName: 'Article', targetClass: 'App\Entity\Comment',
-				targetName : 'Comment', fieldName: 'comments', mappedBy: 'article',
+				targetName : 'Comment', mappedBy: 'article',
 				options    : $options, io: $this->io, targetFields: $childFields,
 			);
 		}

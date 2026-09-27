@@ -107,21 +107,21 @@
 		 * @param list<string> $filterExcludedFields
 		 */
 		public function __construct(
-			string         $projectDir,
-			string         $rootNamespace = 'App',
-			public string  $sourceDir = 'src',
-			string         $entityNamespace = 'Entity',
-			string         $dtoNamespace = 'DTO',
-			string         $stateNamespace = 'State',
-			string         $testNamespace = 'App\\Tests\\Functional',
-			public string  $testDirectory = 'tests/Functional',
-			public string  $adminRole = 'ROLE_ADMIN',
-			public array   $systemFields = self::DEFAULT_SYSTEM_FIELDS,
-			public array   $updateSystemFields = self::DEFAULT_UPDATE_SYSTEM_FIELDS,
-			public array   $booleanSpecialFields = self::DEFAULT_BOOLEAN_SPECIAL_FIELDS,
-			public ?string $templatesDirectory = null,
-			public array   $filterExcludedFields = [],
-			public bool    $sortOnToOneRelations = false,
+			string             $projectDir,
+			string             $rootNamespace = 'App',
+			public string      $sourceDir = 'src',
+			string             $entityNamespace = 'Entity',
+			string             $dtoNamespace = 'DTO',
+			string             $stateNamespace = 'State',
+			string             $testNamespace = 'App\\Tests\\Functional',
+			public string      $testDirectory = 'tests/Functional',
+			public string      $adminRole = 'ROLE_ADMIN',
+			public array       $systemFields = self::DEFAULT_SYSTEM_FIELDS,
+			public array       $updateSystemFields = self::DEFAULT_UPDATE_SYSTEM_FIELDS,
+			public array       $booleanSpecialFields = self::DEFAULT_BOOLEAN_SPECIAL_FIELDS,
+			public string|null $templatesDirectory = null,
+			public array       $filterExcludedFields = [],
+			public bool        $sortOnToOneRelations = false,
 		) {
 			$this->projectDir      = rtrim(str_replace('\\', '/', $projectDir), '/');
 			$this->rootNamespace   = trim($rootNamespace, '\\');

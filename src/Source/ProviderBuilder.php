@@ -52,21 +52,13 @@
 		 * @throws \Twig\Error\RuntimeError
 		 * @throws \Twig\Error\SyntaxError
 		 */
-		public function buildGetProvider(
-			string $entityClass,
-			string $entityName,
-			string $stateNs,
-			array  $fields = [],
-		): string {
+		public function buildGetProvider(string $entityClass, string $entityName, string $stateNs, array $fields = []): string {
 			/* Relations ToOne pour eager loading (évite le problème N+1) */
 			$eagerRelations = [];
 
 			foreach ($fields as $fieldName => $info) {
 				if (is_array($info) && ($info['isRelation'] ?? false) && !($info['isToMany'] ?? false)) {
-					$eagerRelations[] = [
-						'field' => $fieldName,
-						'alias' => lcfirst((string)$fieldName),
-					];
+					$eagerRelations[] = ['field' => $fieldName, 'alias' => lcfirst((string)$fieldName)];
 				}
 			}
 

@@ -72,21 +72,10 @@
 		 *                             GraphQL n'est plus filtrable (les paramètres ne sont posés que sur GetCollection)
 		 */
 		public function __construct(
-			public bool $force = false,
-			public bool $reinit = false,
-			public bool $onlyResource = false,
-			public bool $withProvider = false,
-			public bool $toggleBoolean = false,
-			public bool $detachBoolean = false,
-			public bool $all = false,
-			public bool $dryRun = false,
-			public bool $preview = false,
-			public bool $interactive = false,
-			public bool $withTests = false,
-			public bool $subResources = false,
-			public bool $graphqlFilters = false,
-			public bool $withMercure = false,
-			public bool $publicMercure = false,
+			public bool $force = false, public bool $reinit = false, public bool $onlyResource = false,
+			public bool $withProvider = false, public bool $toggleBoolean = false, public bool $detachBoolean = false,
+			public bool $all = false, public bool $dryRun = false, public bool $preview = false, public bool $interactive = false, public bool $withTests = false,
+			public bool $subResources = false, public bool $graphqlFilters = false, public bool $withMercure = false, public bool $publicMercure = false,
 		) {}
 
 		/**
@@ -107,23 +96,14 @@
 		 * @param bool|null $graphqlFilters
 		 * @param bool|null $withMercure
 		 * @param bool|null $publicMercure
+		 *
+		 * @return \SocioLink\ApiResourceBundle\Source\GenerationOptions
 		 */
 		public static function fromFlags(
-			bool|null $force = null,
-			bool|null $reinit = null,
-			bool|null $onlyResource = null,
-			bool|null $withProvider = null,
-			bool|null $toggleBoolean = null,
-			bool|null $detachBoolean = null,
-			bool|null $all = null,
-			bool|null $dryRun = null,
-			bool|null $preview = null,
-			bool|null $interactive = null,
-			bool|null $withTests = null,
-			bool|null $subResources = null,
-			bool|null $graphqlFilters = null,
-			bool|null $withMercure = null,
-			bool|null $publicMercure = null,
+			bool|null $force = null, bool|null $reinit = null, bool|null $onlyResource = null,
+			bool|null $withProvider = null, bool|null $toggleBoolean = null, bool|null $detachBoolean = null,
+			bool|null $all = null, bool|null $dryRun = null, bool|null $preview = null, bool|null $interactive = null, bool|null $withTests = null,
+			bool|null $subResources = null, bool|null $graphqlFilters = null, bool|null $withMercure = null, bool|null $publicMercure = null,
 		): self {
 			$detachBoolean  ??= false;
 			$toggleBoolean  ??= false;
@@ -147,11 +127,9 @@
 			}
 
 			return new self(
-				force        : $force, reinit: $reinit, onlyResource: $onlyResource, withProvider: $withProvider,
-				toggleBoolean: $toggleBoolean, detachBoolean: $detachBoolean, all: $all,
-				dryRun       : $dryRun, preview: $preview, interactive: $interactive,
-				withTests    : $withTests, subResources: $subResources, graphqlFilters: $graphqlFilters,
-				withMercure  : $withMercure, publicMercure: $publicMercure,
+				force        : $force, reinit: $reinit, onlyResource: $onlyResource, withProvider: $withProvider, toggleBoolean: $toggleBoolean,
+				detachBoolean: $detachBoolean, all: $all, dryRun: $dryRun, preview: $preview, interactive: $interactive, withTests: $withTests,
+				subResources : $subResources, graphqlFilters: $graphqlFilters, withMercure: $withMercure, publicMercure: $publicMercure,
 			);
 		}
 

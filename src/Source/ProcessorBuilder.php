@@ -26,6 +26,7 @@
 	namespace SocioLink\ApiResourceBundle\Source;
 
 	use Twig\Environment;
+	use ApiPlatform\Metadata\Operation;
 	use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 	/**
@@ -36,7 +37,7 @@
 	final readonly class ProcessorBuilder {
 		/** Imports communs à tous les processors qui chargent l'entité par son identifiant. */
 		private const array ENTITY_LOADING_USES = [
-			'ApiPlatform\Metadata\Operation',
+			Operation::class,
 			'ApiPlatform\State\ProcessorInterface',
 			'ApiPlatform\Validator\Exception\ValidationException as ApiValidationException',
 			'Doctrine\ORM\EntityManagerInterface',
@@ -71,16 +72,18 @@
 		public function buildCreateProcessor(string $entityClass, string $entityName, string $stateNs, string $dtoNs): string {
 			return $this->twig->render('create_processor.php.twig', [
 				'namespace'   => $stateNs,
-				'uses_block'  => $this->usesBlock([
-					                                  'ApiPlatform\Metadata\Operation',
-					                                  'ApiPlatform\State\ProcessorInterface',
-					                                  'ApiPlatform\Validator\Exception\ValidationException as ApiValidationException',
-					                                  'ReflectionObject',
-					                                  'Symfony\Component\DependencyInjection\Attribute\Autowire',
-					                                  'Symfony\Component\Validator\Validator\ValidatorInterface',
-					                                  $entityClass,
-					                                  "{$dtoNs}\\{$entityName}CreateDto",
-				                                  ]),
+				'uses_block'  => $this->usesBlock(
+					[
+						'ApiPlatform\Metadata\Operation',
+						'ApiPlatform\State\ProcessorInterface',
+						'ApiPlatform\Validator\Exception\ValidationException as ApiValidationException',
+						'ReflectionObject',
+						'Symfony\Component\DependencyInjection\Attribute\Autowire',
+						'Symfony\Component\Validator\Validator\ValidatorInterface',
+						$entityClass,
+						"{$dtoNs}\\{$entityName}CreateDto",
+					]
+				),
 				'entity_name' => $entityName,
 			]);
 		}

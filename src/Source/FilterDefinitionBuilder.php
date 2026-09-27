@@ -64,7 +64,7 @@
 	 */
 	final readonly class FilterDefinitionBuilder {
 		/* Sans configuration (tests unitaires) : aucun champ exclu, pas de tri sur les relations ToOne. */
-		public function __construct(private ?GeneratorConfig $config = null) {}
+		public function __construct(private GeneratorConfig|null $config = null) {}
 
 		/**
 		 * Types Doctrine exclus de tout filtre (hors ExistsFilter si le champ est nullable).
@@ -367,7 +367,7 @@
 				}
 			}
 
-			return ['valid' => $valid, 'invalid' => $invalid];
+			return compact('valid', 'invalid');
 		}
 
 		/* ── Utilitaires ─── */

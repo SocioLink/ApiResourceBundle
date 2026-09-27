@@ -48,16 +48,10 @@
 		 * Lève InvalidOptionsException, avec un message affichable, si la combinaison est invalide.
 		 */
 		public function create(InputInterface $input): GenerationOptions {
-			$active = array_values(array_filter(
-				                       self::EXCLUSIVE_OPTIONS,
-				                       static fn(string $option): bool => (bool)$input->getOption($option),
-			                       ));
+			$active = array_values(array_filter(self::EXCLUSIVE_OPTIONS, static fn(string $option): bool => (bool)$input->getOption($option)));
 
 			if (count($active) > 1) {
-				throw new InvalidOptionsException(sprintf(
-					                                  'Les options --%s sont mutuellement exclusives. Utilisez-en une seule à la fois.',
-					                                  implode(', --', $active),
-				                                  ));
+				throw new InvalidOptionsException(sprintf('Les options --%s sont mutuellement exclusives. Utilisez-en une seule à la fois.', implode(', --', $active)));
 			}
 
 			if ($input->getOption('reinit') && !$input->getOption('force')) {

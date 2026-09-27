@@ -65,7 +65,10 @@
 				return '';
 			}
 
-			$parts = explode('\\', substr($entityClass, strlen($prefix)));
+			$parts = $prefix
+			         |> strlen(...)
+			         |> (static fn($x) => substr($entityClass, $x))
+			         |> (static fn($x) => explode('\\', $x));
 			array_pop($parts); /* retire le nom de la classe : il ne reste que les sous-espaces */
 
 			return implode('\\', $parts);
@@ -153,7 +156,11 @@
 		public function getRoutePrefix(string $entityClass): string {
 			$sub = $this->getSubPath($entityClass);
 
-			return $sub !== '' ? '/' . strtolower(str_replace('\\', '/', $sub)) : '';
+			if ($sub !== '') {
+				return '/' . strtolower(str_replace('\\', '/', $sub));
+			}
+
+			return '';
 		}
 
 		/*
@@ -163,7 +170,6 @@
 		 */
 		public function toApiPlatformUriBase(string $entityName): string {
 			$snake = strtolower((string)preg_replace('/(?<!^)[A-Z]/', '_$0', $entityName));
-
 			return InflectorFactory::create()->build()->pluralize($snake);
 		}
 
@@ -185,7 +191,11 @@
 			$sub  = $this->getSubPath($entityClass);
 			$name = $this->getShortClassName($entityClass);
 
-			return $sub !== '' ? "{$base}\\{$sub}\\{$name}" : "{$base}\\{$name}";
+			if ($sub !== '') {
+				return "{$base}\\{$sub}\\{$name}";
+			}
+
+			return "{$base}\\{$name}";
 		}
 
 		/*

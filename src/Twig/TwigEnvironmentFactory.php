@@ -55,9 +55,7 @@
 			$paths = [];
 
 			if ($config->templatesDirectory !== null && $config->templatesDirectory !== '') {
-				$override = self::isAbsolute($config->templatesDirectory)
-					? $config->templatesDirectory
-					: $config->projectDir . '/' . trim($config->templatesDirectory, '/');
+				$override = self::isAbsolute($config->templatesDirectory) ? $config->templatesDirectory : $config->projectDir . '/' . trim($config->templatesDirectory, '/');
 
 				if (is_dir($override)) {
 					$paths[] = $override; /* prioritaire : Twig cherche dans l'ordre des chemins */

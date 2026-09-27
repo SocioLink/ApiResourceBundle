@@ -69,7 +69,7 @@
 				$namespace = $position === false ? '' : substr($fqcn, 0, $position);
 				$short     = $position === false ? $fqcn : substr($fqcn, $position + 1);
 
-				$byNamespace[$namespace][] = ['fqcn' => $fqcn, 'short' => $short];
+				$byNamespace[$namespace][] = compact('fqcn', 'short');
 			}
 
 			ksort($byNamespace, SORT_STRING);
@@ -117,7 +117,7 @@
 		 *
 		 * @param MenuStructure $menu
 		 */
-		public function entityForNumber(int $number, array $menu): ?string {
+		public function entityForNumber(int $number, array $menu): string|null {
 			if ($number === $menu['allNumber']) {
 				return null;
 			}
@@ -154,12 +154,9 @@
 			}
 
 			/* Dernière option : toutes les entités existantes. */
-			$io->writeln(sprintf(
-				             '  [%s] <info>%s</info> — toutes les entités (%d)',
-				             str_pad((string)$menu['allNumber'], $width, ' ', STR_PAD_LEFT),
-				             self::ALL_LABEL,
-				             $menu['total'],
-			             ));
+			str_pad((string)$menu['allNumber'], $width, ' ', STR_PAD_LEFT)
+			|> (static fn($x) => sprintf('  [%s] <info>%s</info> — toutes les entités (%d)', $x, self::ALL_LABEL, $menu['total']))
+			|> $io(...);
 			$io->newLine();
 		}
 
