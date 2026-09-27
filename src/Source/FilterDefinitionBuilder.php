@@ -248,11 +248,8 @@
 					],
 					'boolean'                                 => [
 						"{$key} => new QueryParameter(",
-						"    schema: ['type' => 'boolean'],",
-						'    filter: new ExactFilter(),',
-						"    property: {$prop},",
-						'    castToArray: false,',
-						'    castToNativeType: true,',
+						"    schema: ['type' => 'boolean'],", '    filter: new ExactFilter(),',
+						"    property: {$prop},", '    castToArray: false,', '    castToNativeType: true,',
 						'),',
 					],
 					'numeric'                                 => [
