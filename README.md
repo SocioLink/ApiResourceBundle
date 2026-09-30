@@ -41,8 +41,19 @@ leurs entités en dépendent aussi en production.
 ## Installation
 
 ```bash
-composer require --dev sociolink/api-resource-bundle
+composer require --dev sociolink/api-resource-bundle:^1.0
 ```
+
+### Versions
+
+Le bundle suit le [versionnage sémantique](https://semver.org/lang/fr/) ; chaque version est un tag
+Git `vX.Y.Z`, publié sur Packagist, et décrite dans le [CHANGELOG](CHANGELOG.md). Préférez la contrainte
+`^1.0` à `dev-main` : `composer update` n'apporte alors que des versions publiées et compatibles.
+
+Le **contrat public**, dont toute rupture impose une version majeure, comprend : le nom et les options de
+la commande, les clés de configuration `sociolink_api_resource.*`, et la forme du code généré (noms et
+emplacements des fichiers, `shortName` et URIs des ressources). Les classes internes (`@internal`) n'en
+font pas partie.
 
 ### Avec Symfony Flex
 
