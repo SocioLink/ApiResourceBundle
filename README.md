@@ -144,7 +144,7 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 | Option            | Effet                                                                                                                                               |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--force` / `-f`  | Écrase les fichiers existants et réinjecte `#[ApiResource]`.                                                                                        |
-| `--reinit` / `-r` | Avec `--force` : supprime les dossiers `DTO/<Entité>` et `State/<Entité>` des **seules** entités traitées (confirmation demandée dans un terminal). |
+| `--reinit` / `-r` | Avec `--force` : supprime les dossiers `DTO/<Entité>` et `State/<Entité>` des **seules** entités traitées (confirmation demandée dans un terminal), et retire de ces entités les sous-ressources dont la relation (`toProperty`) n'existe plus. |
 
 ### Mutuellement exclusives (une seule à la fois)
 
@@ -163,7 +163,7 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 | `--dry-run`         | Simule sans écrire aucun fichier — **entités comprises**.                                                                          |
 | `--preview`         | Affiche le code généré dans la console (implique `--dry-run`).                                                                     |
 | `--with-tests`      | Génère des tests fonctionnels `ApiTestCase` (paquet `api-platform/test`).                                                          |
-| `--sub-resources`   | Sous-ressources pour les relations `OneToMany`.                                                                                    |
+| `--sub-resources`   | Sous-ressources pour les relations `OneToMany` (`shortName` propre `{Parent}{Enfant}`, placées après la ressource principale).     |
 | `--graphql-filters` | Reporte les paramètres de filtrage sur `QueryCollection` (GraphQL).                                                                |
 | `--with-mercure`    | Injecte la directive `mercure` (**privée** par défaut : `mercure: ['private' => true]`).                                           |
 | `--public`          | Avec `--with-mercure` : `mercure: true` (mises à jour publiées **publiquement**) au lieu de privées. Refusé sans `--with-mercure`. |

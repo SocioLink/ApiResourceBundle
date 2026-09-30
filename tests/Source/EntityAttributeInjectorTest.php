@@ -406,6 +406,108 @@ PHP;
 			$this->assertStringNotContainsString("property: 'body'", $replaced);
 		}
 
+		/*
+		 * Entité enfant au format d'un projet réel : sous-ressource AVANT la ressource principale, et arguments
+		 * réalignés par l'IDE (`uriTemplate : '…'`). $subs : [parent (URI), variable, toProperty, classe parente].
+		 */
+		/** @param list<array{string, string, string, string}> $subs */
+		private function realignedChildEntity(array $subs): string {
+			$blocks = '';
+
+			foreach ($subs as [$uri, $var, $toProperty, $parent]) {
+				$blocks .= "    #[ApiResource(\n"
+				           . "        uriTemplate : '/{$uri}/{{$var}}/comments',\n"
+				           . "        operations  : [new GetCollection()],\n"
+				           . "        uriVariables: ['{$var}' => new Link(toProperty: '{$toProperty}', fromClass: {$parent}::class)],\n"
+				           . "    )]\n";
+			}
+
+			return "<?php\n\n    namespace App\\Entity;\n\n"
+			       . "    use ApiPlatform\\Metadata\\ApiResource;\n    use ApiPlatform\\Metadata\\Get;\n    use ApiPlatform\\Metadata\\GetCollection;\n"
+			       . "    use ApiPlatform\\Metadata\\Link;\n    use Doctrine\\ORM\\Mapping as ORM;\n\n"
+			       . "    #[ORM\\Entity]\n" . $blocks
+			       . "    #[ApiResource(\n        operations       : [new Get(), new GetCollection()],\n    )]\n"
+			       . "    final class Comment {\n        private string \$body = '';\n    }\n";
+		}
+
+		/** @return array<string, array<string, mixed>> */
+		private function commentFields(): array {
+			return ['id' => $this->field('uuid'), 'body' => $this->field('string'), 'article' => $this->field('App\Entity\Article', relation: true)];
+		}
+
+		/* Positions des #[ApiResource] de la source : [principale, première sous-ressource]. */
+		/** @return array{int|false, int|false} */
+		private function resourcePositions(string $source): array {
+			return [strpos($source, "#[ApiResource(\n        operations"), strpos($source, "#[ApiResource(\n        uriTemplate")];
+		}
+
+		public function testMainResourceIsInsertedBeforeAnExistingSubResource(): void {
+			$path = $this->writeEntity('Comment', $this->plainEntity('Comment'));
+			$this->injectSub(GenerationOptions::fromFlags(), $this->commentFields());
+			$this->inject('Comment', $this->commentFields(), GenerationOptions::fromFlags());
+
+			[$main, $sub] = $this->resourcePositions((string)file_get_contents($path));
+
+			$this->assertNotFalse($main);
+			$this->assertNotFalse($sub);
+			$this->assertLessThan($sub, $main, 'La ressource principale doit précéder la sous-ressource (sinon API Platform la renomme Comment2).');
+			$this->assertValidPhp($path);
+		}
+
+		public function testForceMovesTheMainResourceBeforeTheSubResources(): void {
+			$path = $this->writeEntity('Comment', $this->realignedChildEntity([['articles', 'articlesId', 'article', 'Article']]));
+			$this->inject('Comment', $this->commentFields(), GenerationOptions::fromFlags(force: true));
+			$source = (string)file_get_contents($path);
+
+			$this->assertSame(2, substr_count($source, '#[ApiResource('));
+			$this->assertMatchesRegularExpression("/#\[ORM\\\\Entity\]\n    #\[ApiResource\(\n        operations/", $source);
+			$this->assertMatchesRegularExpression('/\)\]\n    #\[ApiResource\(\n        uriTemplate : /', $source);
+			$this->assertValidPhp($path);
+		}
+
+		public function testSubResourceHasItsOwnShortName(): void {
+			$path = $this->writeEntity('Comment', $this->plainEntity('Comment'));
+			$this->injectSub(GenerationOptions::fromFlags(), $this->commentFields());
+
+			$this->assertMatchesRegularExpression(
+				"/uriTemplate: '\/articles\/\{articlesId\}\/comments',\n        shortName: 'ArticleComment',/",
+				(string)file_get_contents($path),
+			);
+		}
+
+		public function testRealignedSubResourceIsReplacedNotDuplicated(): void {
+			$path = $this->writeEntity('Comment', $this->realignedChildEntity([['articles', 'articlesId', 'article', 'Article']]));
+
+			$this->assertSame('skipped', $this->injectSub(GenerationOptions::fromFlags(), $this->commentFields()));
+
+			$this->injectSub(GenerationOptions::fromFlags(force: true), $this->commentFields());
+			$source = (string)file_get_contents($path);
+
+			$this->assertSame(1, substr_count($source, '/articles/{articlesId}/comments'), 'La sous-ressource réalignée doit être remplacée, pas dupliquée.');
+			$this->assertSame(2, substr_count($source, '#[ApiResource('));
+			$this->assertStringContainsString("shortName: 'ArticleComment'", $source);
+			$this->assertValidPhp($path);
+		}
+
+		public function testReinitRemovesOnlyOrphanSubResources(): void {
+			$subs = [['articles', 'articlesId', 'article', 'Article'], ['posts', 'postsId', 'post', 'Post']];
+			$path = $this->writeEntity('Comment', $this->realignedChildEntity($subs));
+
+			/* --force seul : aucune sous-ressource n'est retirée, même orpheline. */
+			$this->inject('Comment', $this->commentFields(), GenerationOptions::fromFlags(force: true));
+			$this->assertStringContainsString('/posts/{postsId}/comments', (string)file_get_contents($path));
+
+			/* --force --reinit : la relation « post » n'existe plus, sa sous-ressource est retirée ; « article » est conservée. */
+			$this->inject('Comment', $this->commentFields(), GenerationOptions::fromFlags(force: true, reinit: true));
+			$source = (string)file_get_contents($path);
+
+			$this->assertStringNotContainsString('/posts/{postsId}/comments', $source);
+			$this->assertStringContainsString('/articles/{articlesId}/comments', $source);
+			$this->assertStringContainsString('use ApiPlatform\Metadata\Link;', $source);
+			$this->assertStringContainsString('Sous-ressource orpheline retirée de Comment', $this->output->fetch());
+			$this->assertValidPhp($path);
+		}
+
 		public function testSubResourceInDryRunDoesNotWrite(): void {
 			$path   = $this->writeEntity('Comment', $this->plainEntity('Comment'));
 			$before = md5_file($path);

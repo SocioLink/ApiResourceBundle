@@ -56,7 +56,13 @@
 	 *  - --force ne supprime que ce que le générateur a lui-même injecté : les #[ApiFilter] posés sur
 	 *    des propriétés, les `use ApiPlatform\*` encore référencés et les sous-ressources sont conservés ;
 	 *  - une sous-ressource injectée par le parent ne bloque plus la génération de l'entité enfant,
-	 *    et --force sur l'enfant ne la supprime plus.
+	 *    et --force sur l'enfant ne la supprime plus ;
+	 *  - la ressource principale est toujours le premier #[ApiResource] de la classe, et chaque sous-ressource
+	 *    porte un shortName propre ({Parent}{Enfant}) : API Platform n'a plus de shortName en double à suffixer
+	 *    (plus de Place2 ni d'URI /place2s) ;
+	 *  - une sous-ressource existante est reconnue même dans un fichier réaligné (`uriTemplate : '…'`),
+	 *    donc remplacée et non dupliquée ;
+	 *  - --force --reinit retire les sous-ressources dont la relation n'existe plus sur l'entité.
 	 *
 	 * Valeurs retournées :
 	 *  - chemin absolu  : injection réussie (ou simulée en lecture seule)
@@ -160,6 +166,11 @@
 				$source = $this->removeInjectedAttributes($source, $entityName);
 			}
 
+			/* --force --reinit : les sous-ressources dont la relation n'existe plus sur l'entité sont retirées. */
+			if ($options->force && $options->reinit) {
+				$source = $this->removeOrphanSubResources($source, $entityName, $fields, $io);
+			}
+
 			[$attrBlock, $requiredFqcns] = $this->buildEntityAttributeBlock(
 				$entityClass, $entityName, $fields, $dtoNs, $stateNs, $options, $allBooleanFields, $uploadFields,
 			);
@@ -172,9 +183,21 @@
 				return 'not_found';
 			}
 
-			[$lineStart, $indent] = $this->resolveLineStart($source, $declStart);
+			/*
+			 * La ressource principale est TOUJOURS le premier #[ApiResource] de la classe : insérée avant le premier
+			 * #[ApiResource] existant (une sous-ressource), à défaut avant la ligne de déclaration de la classe.
+			 * API Platform s'appuie sur la première déclaration (opérations GraphQL par défaut, @type des ressources
+			 * imbriquées) et suffixe les shortName en double dans l'ordre de déclaration (Place, Place2…).
+			 */
+			$first = $this->findClassAttributes($source, $entityName, 'ApiResource')[0] ?? null;
 
-			/* Le bloc est inséré sur ses propres lignes, juste avant la ligne de déclaration de la classe. */
+			if ($first !== null && $first['ownLine']) {
+				[$lineStart, $indent] = [$first['start'], $first['indent']];
+			}
+			else {
+				[$lineStart, $indent] = $this->resolveLineStart($source, $declStart);
+			}
+
 			$source = substr($source, 0, $lineStart) . $this->indentBlock($attrBlock, $indent, $eol) . $eol . substr($source, $lineStart);
 
 			[$source, $addedUses] = $this->addImports($source, $requiredFqcns, $eol);
@@ -218,11 +241,14 @@
 			$parentVarName = $parentUriBase . 'Id';
 			$uriTemplate   = "/{$parentUriBase}/{{$parentVarName}}/{$fieldUri}";
 
-			/* Signature d'une sous-ressource de CE parent : tout uriTemplate commençant par '/{parent}/'. */
-			$signature = "uriTemplate: '/{$parentUriBase}/";
+			/*
+			 * Signature d'une sous-ressource de CE parent : tout uriTemplate commençant par '/{parent}/'.
+			 * Tolère les espaces autour du « : » (fichiers réalignés par l'IDE : `uriTemplate : '/…'`).
+			 */
+			$signature = '/\buriTemplate\s*:\s*[\'"]\/' . preg_quote($parentUriBase, '/') . '\//';
 
 			foreach ($this->findClassAttributes($source, $targetName, 'ApiResource') as $attribute) {
-				if ($this->isSubResourceAttribute($attribute['text']) && str_contains($attribute['text'], $signature)) {
+				if ($this->isSubResourceAttribute($attribute['text']) && preg_match($signature, $attribute['text']) === 1) {
 					if (!$options->force) {
 						return 'skipped';
 					}
@@ -247,8 +273,14 @@
 				              . "    ],\n";
 			}
 
+			/*
+			 * shortName explicite et propre au couple parent/enfant : sans lui, la sous-ressource partage le shortName
+			 * de la ressource principale et API Platform en suffixe une (Place2, /activity/place2s). Il reste APRÈS
+			 * uriTemplate, dont la position en tête identifie une sous-ressource (isSubResourceAttribute()).
+			 */
 			$attrBlock = "#[ApiResource(\n"
 			             . "    uriTemplate: '{$uriTemplate}',\n"
+			             . "    shortName: '{$parentName}{$targetName}',\n"
 			             . $operations
 			             . "    uriVariables: ['{$parentVarName}' => new Link(toProperty: '{$mappedBy}', fromClass: {$parentName}::class)],\n"
 			             . ')]';
@@ -607,6 +639,40 @@
 			}
 
 			return $source;
+		}
+
+		/*
+		 * Retire les sous-ressources générées devenues orphelines (--force --reinit) : celles dont le `toProperty`
+		 * du Link ne désigne plus une relation de l'entité. Une sous-ressource dont le Link n'est pas lisible est
+		 * conservée : dans le doute, on ne supprime rien.
+		 */
+		/**
+		 * @param array<string, array<string, mixed>> $fields
+		 */
+		private function removeOrphanSubResources(string $source, string $entityName, array $fields, SymfonyStyle $io): string {
+			/* Une suppression par passe : les offsets sont recalculés à chaque tour. */
+			while (true) {
+				$target = null;
+
+				foreach ($this->findClassAttributes($source, $entityName, 'ApiResource') as $attribute) {
+					if (!$this->isSubResourceAttribute($attribute['text'])
+					    || preg_match('/\btoProperty\s*:\s*[\'"](\w+)[\'"]/', $attribute['text'], $m) !== 1) {
+						continue;
+					}
+
+					if (!($fields[$m[1]]['isRelation'] ?? false)) {
+						$target = $attribute;
+						$io->text(sprintf('  ✕ Sous-ressource orpheline retirée de %s (relation « %s » absente)', $entityName, $m[1]));
+						break;
+					}
+				}
+
+				if ($target === null) {
+					return $this->removeOrphanGeneratedImports($source);
+				}
+
+				$source = substr($source, 0, $target['start']) . substr($source, $target['end']);
+			}
 		}
 
 		/*

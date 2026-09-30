@@ -91,7 +91,7 @@
 				->addArgument('entity', InputArgument::OPTIONAL, 'Nom court (ex. Article) ou FQCN de l\'entité ; « * » = toutes les entités. Absent = menu interactif.')
 				/* ── Options de destruction ─── */
 				->addOption('force', 'f', InputOption::VALUE_NONE, 'Écrase les fichiers existants et réinjecte les attributs #[ApiResource].')
-				->addOption('reinit', 'r', InputOption::VALUE_NONE, 'Utilisé avec --force : supprime les répertoires DTO/ et State/ des entités traitées.')
+				->addOption('reinit', 'r', InputOption::VALUE_NONE, 'Utilisé avec --force : supprime les répertoires DTO/ et State/ des entités traitées et leurs sous-ressources orphelines.')
 				/* ── Options mutuellement exclusives ─── */
 				->addOption('only-resource', 'o', InputOption::VALUE_NONE, 'Injecte #[ApiResource] + filtres uniquement.')
 				->addOption('with-provider', 'w', InputOption::VALUE_NONE, 'Génère un Provider pour GET {id}.')

@@ -40,7 +40,8 @@
 		/**
 		 * @param bool $force          --force / -f : écrase les fichiers existants et réinjecte les attributs
 		 * @param bool $reinit         --reinit : utilisé UNIQUEMENT avec --force ; supprime les dossiers DTO et State
-		 *                             des entités traitées avant régénération
+		 *                             des entités traitées avant régénération, et retire de ces entités les
+		 *                             sous-ressources dont la relation n'existe plus
 		 * @param bool $onlyResource   --only-resource : injecte #[ApiResource] + filtres uniquement.
 		 *                             Aucun DTO, Processor ou Provider n'est créé ni référencé
 		 * @param bool $withProvider   --with-provider : génère un Provider pour l'opération GET {id}.
