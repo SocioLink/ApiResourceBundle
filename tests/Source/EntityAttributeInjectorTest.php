@@ -166,14 +166,14 @@ PHP;
 
 		/* ── Rendu des paramètres ─── */
 
-		public function testFreshEntityReceivesQueryParametersOnGetCollection(): void {
+		public function testFreshEntityReceivesQueryParametersOnApiResource(): void {
 			$path   = $this->writeEntity('Article', $this->plainEntity());
 			$result = $this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags());
 			$source = (string)file_get_contents($path);
 
 			$this->assertSame($path, $result);
 			$this->assertValidPhp($path);
-			$this->assertStringContainsString('new GetCollection(', $source);
+			$this->assertStringContainsString('new Get(), new GetCollection(),', $source);
 			$this->assertStringContainsString('parameters: [', $source);
 			$this->assertStringContainsString("'exists[:property]' => new QueryParameter(", $source);
 			$this->assertStringContainsString("'order[:property]' => new QueryParameter(", $source);
@@ -216,18 +216,20 @@ PHP;
 			$this->assertMatchesRegularExpression('/\)\]\n    final class Article \{/', $source);
 		}
 
-		public function testGraphqlFiltersOptionCopiesParametersOntoQueryCollection(): void {
+		public function testGraphqlFiltersOptionKeepsParametersOnResourceWithoutDuplication(): void {
 			$withPath = $this->writeEntity('Article', $this->plainEntity());
 			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags(graphqlFilters: true));
 			$with = (string)file_get_contents($withPath);
 
-			$this->assertMatchesRegularExpression("/new QueryCollection\(\n\s+paginationType: 'page',\n\s+parameters: \[/", $with);
+			$this->assertStringContainsString("parameters: [", $with);
+			$this->assertStringContainsString("graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')]", $with);
 
 			$withoutPath = $this->writeEntity('Article', $this->plainEntity());
 			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags(force: true));
 			$without = (string)file_get_contents($withoutPath);
 
-			$this->assertStringContainsString("new QueryCollection(paginationType: 'page')", $without);
+			$this->assertStringContainsString("parameters: [", $without);
+			$this->assertStringContainsString("graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')]", $without);
 		}
 
 		/* ── Mercure (--with-mercure / --public) ─── */

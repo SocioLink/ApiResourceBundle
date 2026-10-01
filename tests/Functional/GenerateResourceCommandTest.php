@@ -228,6 +228,7 @@
 		public function testStringFieldsGetAPartialFilterButEnumsAndCustomTypesStayExact(): void {
 			$entity = self::src('Entity/Article.php');
 
+			$this->assertStringContainsString('parameters: [', $entity);
 			$this->assertStringContainsString("'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),", $entity);
 			$this->assertStringContainsString("'status' => new QueryParameter(filter: new ExactFilter(), property: 'status'),", $entity);
 			$this->assertStringContainsString("'mobile' => new QueryParameter(filter: new ExactFilter(), property: 'mobile'),", $entity);

@@ -175,7 +175,7 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 | `--preview`         | Affiche le code généré dans la console (implique `--dry-run`).                                                                     |
 | `--with-tests`      | Génère des tests fonctionnels `ApiTestCase` (paquet `api-platform/test`).                                                          |
 | `--sub-resources`   | Sous-ressources pour les relations `OneToMany` (`shortName` propre `{Parent}{Enfant}`, placées après la ressource principale).     |
-| `--graphql-filters` | Reporte les paramètres de filtrage sur `QueryCollection` (GraphQL).                                                                |
+| `--graphql-filters` | Conservée pour compatibilité : les paramètres déclarés sur `#[ApiResource]` s'appliquent déjà nativement à GraphQL. |
 | `--with-mercure`    | Injecte la directive `mercure` (**privée** par défaut : `mercure: ['private' => true]`).                                           |
 | `--public`          | Avec `--with-mercure` : `mercure: true` (mises à jour publiées **publiquement**) au lieu de privées. Refusé sans `--with-mercure`. |
 
@@ -197,8 +197,10 @@ sont tout de même générées.
 
 ## Filtres générés
 
-Les filtres sont des paramètres `#[QueryParameter]` attachés à `GetCollection` (`#[ApiFilter]`,
-déprécié depuis API Platform 4.4, n'est jamais généré) :
+Les filtres sont déclarés en tant que paramètres `parameters: [ ... ]` directement sur l'attribut
+`#[ApiResource]` (`#[ApiFilter]`, déprécié depuis API Platform 4.4, n'est jamais généré).
+Grâce à ce positionnement sur la ressource, API Platform cascade automatiquement ces filtres à la fois
+sur les routes de collection REST (`GetCollection`) et sur les collections GraphQL (`QueryCollection`) :
 
 | Champ Doctrine                    | Filtre généré                                      | Requête                        |
 |-----------------------------------|----------------------------------------------------|--------------------------------|

@@ -118,7 +118,7 @@
 			}
 
 			if ($options->graphqlFilters) {
-				$io->writeln('<comment>GraphQL :</comment> paramètres de filtrage reportés sur QueryCollection');
+				$io->writeln('<comment>GraphQL :</comment> filtres activés (inclus par défaut via #[ApiResource])');
 			}
 
 			if ($options->withMercure) {

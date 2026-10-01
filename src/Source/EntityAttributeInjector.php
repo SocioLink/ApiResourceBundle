@@ -15,10 +15,11 @@
 	 * Description: Injection de l'attribut #[ApiResource] et de ses paramètres de filtrage #[QueryParameter] dans le
 	 *              fichier source des entités Doctrine.
 	 *              Construit le bloc selon le mode : opérations liées aux DTOs, Processors et Provider générés (Get,
-	 *              GetCollection filtrable, Post, Patch, Toggle, endpoints par booléen, upload multipart), ou opérations
-	 *              nues pour --only-resource et --all ; y ajoute routePrefix, mercure (--with-mercure / --public), le tri
-	 *              par défaut et les opérations GraphQL (--graphql-filters). Injecte aussi les sous-ressources sur les
-	 *              entités enfants des relations OneToMany.
+	 *              GetCollection, Post, Patch, Toggle, endpoints par booléen, upload multipart), ou opérations
+	 *              nues pour --only-resource et --all ; injecte les paramètres de filtrage QueryParameter directement
+	 *              sur #[ApiResource] (appliqués nativement à REST et GraphQL) ; y ajoute routePrefix, mercure
+	 *              (--with-mercure / --public), le tri par défaut et les opérations GraphQL. Injecte aussi les
+	 *              sous-ressources sur les entités enfants des relations OneToMany.
 	 *              Garanties : localisation par le tokeniseur PHP (ni chaînes ni commentaires), fins de ligne LF/CRLF
 	 *              respectées, régénération idempotente, --force ne retire que ce que le générateur a produit (les
 	 *              #[ApiFilter] de propriété, imports utilisés et sous-ressources sont conservés), et --dry-run / --preview
@@ -36,7 +37,8 @@
 	 * dans les fichiers source des entités Doctrine.
 	 *
 	 * Les filtres ne sont plus générés sous forme de #[ApiFilter] (déprécié depuis API Platform 4.4,
-	 * supprimé en 6.0) mais sous forme de paramètres attachés à l'opération GetCollection :
+	 * supprimé en 6.0) ni attachés à l'opération GetCollection, mais déclarés en tant que `parameters:` directement
+	 * sur l'attribut #[ApiResource], s'appliquant ainsi automatiquement à la fois aux opérations REST et GraphQL :
 	 * la classification des champs est déléguée à {@see FilterDefinitionBuilder}.
 	 *
 	 * Le contenu du bloc #[ApiResource] varie selon les options :
@@ -46,7 +48,7 @@
 	 *  --all            : identique à --only-resource (artefacts générés mais non liés)
 	 *  --toggle-boolean : opérations + Toggle pour TOUS les booléens (y compris itDeleted/itErased)
 	 *  --detach-boolean : Patch individuel par booléen à la place du Patch /toggle unique
-	 *  --graphql-filters: reporte les paramètres de filtrage sur QueryCollection (GraphQL)
+	 *  --graphql-filters: conservé pour rétrocompatibilité (les filtres s'appliquent déjà nativement à GraphQL)
 	 *  --with-mercure   : injecte la directive mercure (privée : ['private' => true])
 	 *  --with-mercure --public : injecte mercure: true (mises à jour publiées publiquement)
 	 *
@@ -260,17 +262,11 @@
 
 			$definitions = $this->filterBuilder->buildDefinitions($targetFields);
 
-			if ($definitions === []) {
-				$operations = "    operations: [new GetCollection()],\n";
-			}
-			else {
-				$operations = "    operations: [\n"
-				              . "        new GetCollection(\n"
-				              . "            parameters: [\n"
-				              . implode("\n", $this->filterBuilder->renderParameters($definitions, '                ')) . "\n"
-				              . "            ],\n"
-				              . "        ),\n"
-				              . "    ],\n";
+			$parametersLine = '';
+			if ($definitions !== []) {
+				$parametersLine = "    parameters: [\n"
+				                  . implode("\n", $this->filterBuilder->renderParameters($definitions, '        ')) . "\n"
+				                  . "    ],\n";
 			}
 
 			/*
@@ -281,7 +277,8 @@
 			$attrBlock = "#[ApiResource(\n"
 			             . "    uriTemplate: '{$uriTemplate}',\n"
 			             . "    shortName: '{$parentName}{$targetName}',\n"
-			             . $operations
+			             . "    operations: [new GetCollection()],\n"
+			             . $parametersLine
 			             . "    uriVariables: ['{$parentVarName}' => new Link(toProperty: '{$mappedBy}', fromClass: {$parentName}::class)],\n"
 			             . ')]';
 
@@ -351,22 +348,7 @@
 			/* --with-provider : le Provider généré est câblé sur Get (sauf en mode « libre », où rien n'est lié). */
 			$get = $link && $options->withProvider ? "new Get(provider: {$entityName}Provider::class)" : 'new Get()';
 
-			if ($definitions === []) {
-				$operationLines[] = "        {$get}, new GetCollection(),";
-			}
-			else {
-				/* Get et GetCollection sont séparés : les paramètres de filtrage se rattachent à GetCollection uniquement. */
-				$operationLines[] = "        {$get},";
-				$operationLines[] = '        new GetCollection(';
-				$operationLines[] = '            parameters: [';
-
-				foreach ($this->filterBuilder->renderParameters($definitions, '                ') as $line) {
-					$operationLines[] = $line;
-				}
-
-				$operationLines[] = '            ],';
-				$operationLines[] = '        ),';
-			}
+			$operationLines[] = "        {$get}, new GetCollection(),";
 
 			if ($link) {
 				$operationLines[] = "        new Post(input: {$entityName}CreateDto::class, processor: {$entityName}CreateProcessor::class),";
@@ -427,26 +409,21 @@
 			$directivesLine = $directives !== [] ? '    ' . implode(', ', $directives) . ",\n" : '';
 
 			/*
-			 * GraphQL : le #[ApiFilter] de classe filtrait aussi la collection GraphQL, ce que ne font PAS
-			 * des paramètres posés sur GetCollection. --graphql-filters les reporte sur QueryCollection.
+			 * Paramètres de filtrage attachés à #[ApiResource] : API Platform les cascade automatiquement
+			 * à la fois aux opérations REST (GetCollection) et GraphQL (QueryCollection).
 			 */
-			if ($options->graphqlFilters && $definitions !== []) {
-				$graphQl = "    graphQlOperations: [\n"
-				           . "        new Query(),\n"
-				           . "        new QueryCollection(\n"
-				           . "            paginationType: 'page',\n"
-				           . "            parameters: [\n"
-				           . implode("\n", $this->filterBuilder->renderParameters($definitions, '                ')) . "\n"
-				           . "            ],\n"
-				           . "        ),\n"
-				           . "    ],\n";
+			$parametersBlock = '';
+			if ($definitions !== []) {
+				$parametersBlock = "    parameters: [\n"
+				                   . implode("\n", $this->filterBuilder->renderParameters($definitions, '        ')) . "\n"
+				                   . "    ],\n";
 			}
-			else {
-				$graphQl = "    graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')],\n";
-			}
+
+			$graphQl = "    graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')],\n";
 
 			$attrBlock = "#[ApiResource(\n"
 			             . "    operations: {$operationsBlock},\n"
+			             . $parametersBlock
 			             . $directivesLine
 			             . $graphQl
 			             . ')]';

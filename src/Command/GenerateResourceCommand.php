@@ -104,7 +104,7 @@
 				->addOption('interactive', 'i', InputOption::VALUE_NONE, 'Conservée pour compatibilité : le menu s\'affiche dès qu\'aucune entité n\'est indiquée dans un terminal.')
 				->addOption('with-tests', null, InputOption::VALUE_NONE, 'Génère des tests fonctionnels ApiTestCase pour chaque endpoint.')
 				->addOption('sub-resources', null, InputOption::VALUE_NONE, 'Génère des sous-ressources pour les relations OneToMany.')
-				->addOption('graphql-filters', null, InputOption::VALUE_NONE, 'Reporte les paramètres de filtrage sur GraphQL (QueryCollection).')
+				->addOption('graphql-filters', null, InputOption::VALUE_NONE, 'Conservée pour compatibilité : les filtres sont désormais appliqués nativement à GraphQL.')
 				->addOption('with-mercure', null, InputOption::VALUE_NONE, 'Injecte la directive mercure dans #[ApiResource] (privée par défaut).')
 				->addOption('public', null, InputOption::VALUE_NONE, 'Avec --with-mercure : mercure: true (mises à jour publiques) au lieu de mercure privé.')
 				->setHelp(<<<'HELP'

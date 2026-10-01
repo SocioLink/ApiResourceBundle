@@ -8,6 +8,18 @@ Les ruptures de compatibilité sont signalées par **⚠ Rupture**.
 
 ## [Non publié]
 
+## [1.0.1] — 2026-10-01
+
+### Modifié
+
+- Déplacement de la déclaration des paramètres de filtrage `#[QueryParameter]` (`parameters: [...]`)
+  directement sur l'attribut `#[ApiResource]` (ressource principale et sous-ressources) plutôt que sur
+  l'opération `GetCollection`. Cela permet à API Platform de cascader automatiquement et sans duplication
+  les paramètres à la fois sur les collections REST et GraphQL.
+- Simplification de la déclaration des opérations : `new GetCollection()` devient compact, et
+  `graphQlOperations` ne duplique plus la liste des filtres.
+- L'option `--graphql-filters` est conservée pour compatibilité ascendante (devenue implicite / no-op).
+
 ## [1.0.0] — 2026-09-30
 
 Première version publiée. Les projets qui suivaient `dev-main` peuvent passer à la contrainte `^1.0`.
@@ -38,5 +50,6 @@ Première version publiée. Les projets qui suivaient `dev-main` peuvent passer 
   (`uriTemplate : '…'`) : `--force` la remplace au lieu de la dupliquer.
 - `--force --reinit` retire les sous-ressources dont la relation n'existe plus sur l'entité.
 
-[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.0...HEAD
+[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/SocioLink/ApiResourceBundle/releases/tag/v1.0.0

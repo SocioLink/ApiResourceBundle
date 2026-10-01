@@ -68,9 +68,8 @@
 		 *                             directive mercure n'est injectée
 		 * @param bool $publicMercure  --public : avec --with-mercure, injecte mercure: true (mises à jour
 		 *                             publiées publiquement). Sans effet, et refusé par la commande, sans --with-mercure
-		 * @param bool $graphqlFilters --graphql-filters : reporte les paramètres de filtrage (QueryParameter)
-		 *                             sur l'opération GraphQL QueryCollection. Sans ce flag, la collection
-		 *                             GraphQL n'est plus filtrable (les paramètres ne sont posés que sur GetCollection)
+		 * @param bool $graphqlFilters --graphql-filters : conservé pour rétrocompatibilité ; les paramètres de filtrage
+		 *                             (QueryParameter) sont désormais appliqués nativement à REST et GraphQL via #[ApiResource]
 		 */
 		public function __construct(
 			public bool $force = false, public bool $reinit = false, public bool $onlyResource = false,
