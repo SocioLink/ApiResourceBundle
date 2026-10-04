@@ -166,21 +166,37 @@ PHP;
 
 		/* ── Rendu des paramètres ─── */
 
-		public function testFreshEntityReceivesQueryParametersOnApiResource(): void {
+		public function testFreshEntityIsLinkedToItsFiltersCatalogue(): void {
 			$path   = $this->writeEntity('Article', $this->plainEntity());
 			$result = $this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags());
 			$source = (string)file_get_contents($path);
 
 			$this->assertSame($path, $result);
 			$this->assertValidPhp($path);
-			$this->assertStringContainsString('new Get(), new GetCollection(),', $source);
-			$this->assertStringContainsString('parameters: [', $source);
-			$this->assertStringContainsString("'exists[:property]' => new QueryParameter(", $source);
-			$this->assertStringContainsString("'order[:property]' => new QueryParameter(", $source);
-			$this->assertStringContainsString('use ApiPlatform\Metadata\QueryParameter;', $source);
-			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\SortFilter;', $source);
+
+			/* Les filtres vivent dans le catalogue ArticleFilters : l'entité le désigne, REST et GraphQL, et ne déclare aucun paramètre. */
+			$this->assertStringContainsString("new Get(), new GetCollection(extraProperties: ['collection_filters' => ArticleFilters::class]),", $source);
+			$this->assertStringContainsString("new QueryCollection(paginationType: 'page', extraProperties: ['collection_filters' => ArticleFilters::class])", $source);
+			$this->assertStringContainsString('use App\Filters\ArticleFilters;', $source);
+			$this->assertStringNotContainsString('parameters: [', $source);
+			$this->assertStringNotContainsString('QueryParameter', $source);
+			$this->assertStringNotContainsString('ApiPlatform\Doctrine\Orm\Filter', $source);
 			$this->assertStringNotContainsString('ApiFilter', $source);
 			$this->assertSame(1, substr_count($source, '#[ApiResource('));
+		}
+
+		public function testForceRemovesTheOrphanCatalogueImport(): void {
+			$path = $this->writeEntity('Article', $this->plainEntity());
+			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags());
+			$this->assertStringContainsString('use App\Filters\ArticleFilters;', (string)file_get_contents($path));
+
+			/* Plus aucun champ filtrable : le catalogue disparaît de l'entité, son import aussi. */
+			$this->inject('Article', ['id' => $this->field('uuid')], GenerationOptions::fromFlags(force: true));
+			$source = (string)file_get_contents($path);
+
+			$this->assertStringNotContainsString('ArticleFilters', $source);
+			$this->assertStringNotContainsString('collection_filters', $source);
+			$this->assertValidPhp($path);
 		}
 
 		public function testImportsStayAtTheRootAfterAnInterpolationFollowedByAClosureUse(): void {
@@ -204,6 +220,7 @@ PHP;
 
 			$this->assertStringContainsString('new Get(), new GetCollection(),', $source);
 			$this->assertStringNotContainsString('QueryParameter', $source);
+			$this->assertStringNotContainsString('collection_filters', $source); /* aucun champ filtrable : pas de catalogue à désigner */
 			$this->assertValidPhp($path);
 		}
 
@@ -216,20 +233,20 @@ PHP;
 			$this->assertMatchesRegularExpression('/\)\]\n    final class Article \{/', $source);
 		}
 
-		public function testGraphqlFiltersOptionKeepsParametersOnResourceWithoutDuplication(): void {
+		public function testGraphqlFiltersOptionLinksTheSameCatalogueWithoutDuplication(): void {
 			$withPath = $this->writeEntity('Article', $this->plainEntity());
 			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags(graphqlFilters: true));
 			$with = (string)file_get_contents($withPath);
 
-			$this->assertStringContainsString("parameters: [", $with);
-			$this->assertStringContainsString("graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')]", $with);
+			$this->assertSame(2, substr_count($with, "'collection_filters' => ArticleFilters::class")); /* GetCollection + QueryCollection */
+			$this->assertStringNotContainsString('parameters: [', $with);
 
 			$withoutPath = $this->writeEntity('Article', $this->plainEntity());
 			$this->inject('Article', $this->articleFields(), GenerationOptions::fromFlags(force: true));
 			$without = (string)file_get_contents($withoutPath);
 
-			$this->assertStringContainsString("parameters: [", $without);
-			$this->assertStringContainsString("graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')]", $without);
+			/* --graphql-filters est sans effet : le catalogue est toujours relié aux deux collections. */
+			$this->assertSame($with, $without);
 		}
 
 		/* ── Mercure (--with-mercure / --public) ─── */
@@ -307,7 +324,8 @@ PHP;
 			$this->assertStringNotContainsString("#[ApiFilter(OrderFilter", $source);
 			$this->assertStringNotContainsString('use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;', $source);
 			$this->assertSame(1, substr_count($source, '#[ApiResource('));
-			$this->assertStringContainsString('new QueryParameter(', $source);
+			$this->assertStringContainsString("'collection_filters' => ArticleFilters::class", $source);
+			$this->assertStringNotContainsString('new QueryParameter(', $source);
 
 			/* Éléments écrits à la main : #[ApiProperty], #[ApiFilter] de propriété et les imports qu'ils utilisent. */
 			$this->assertStringContainsString("#[ApiProperty(description: 'Titre')]", $source);
@@ -392,20 +410,25 @@ PHP;
 			$this->assertStringContainsString('use ApiPlatform\Metadata\Link;', $source);
 		}
 
-		public function testSubResourceReusesChildParametersAndIsReplacedOnlyWithForce(): void {
+		public function testSubResourceIsLinkedToTheChildCatalogueAndIsReplacedOnlyWithForce(): void {
 			$path = $this->writeEntity('Comment', $this->plainEntity('Comment'));
 			$this->injectSub(GenerationOptions::fromFlags(), ['id' => $this->field('uuid'), 'body' => $this->field('string')]);
 			$source = (string)file_get_contents($path);
 
-			$this->assertStringContainsString("'body' => new QueryParameter(filter: new PartialSearchFilter(), property: 'body'),", $source);
+			/* La sous-ressource désigne le catalogue de l'ENFANT : aucun paramètre n'est recopié sur l'attribut. */
+			$this->assertStringContainsString("operations: [new GetCollection(extraProperties: ['collection_filters' => CommentFilters::class])],", $source);
+			$this->assertStringContainsString('use App\Filters\CommentFilters;', $source);
+			$this->assertStringNotContainsString('parameters: [', $source);
+			$this->assertValidPhp($path);
 			$this->assertSame('skipped', $this->injectSub(GenerationOptions::fromFlags(), ['id' => $this->field('uuid')]));
 
-			$this->injectSub(GenerationOptions::fromFlags(force: true), ['id' => $this->field('uuid'), 'title' => $this->field('string')]);
+			/* --force remplace la sous-ressource : sans champ filtrable, elle n'a plus de catalogue à désigner. */
+			$this->injectSub(GenerationOptions::fromFlags(force: true), ['id' => $this->field('uuid')]);
 			$replaced = (string)file_get_contents($path);
 
 			$this->assertSame(1, substr_count($replaced, '#[ApiResource('));
-			$this->assertStringContainsString("property: 'title'", $replaced);
-			$this->assertStringNotContainsString("property: 'body'", $replaced);
+			$this->assertStringContainsString('operations: [new GetCollection()],', $replaced);
+			$this->assertStringNotContainsString("'collection_filters'", $replaced);
 		}
 
 		/*

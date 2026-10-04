@@ -12,16 +12,20 @@
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
 	 * Creation Date: 21/09/2026
 	 *
-	 * Description: Classification des champs Doctrine en paramètres de filtrage API Platform (#[QueryParameter] attachés à
-	 *              GetCollection), en remplacement des #[ApiFilter] dépréciés depuis API Platform 4.4.
-	 *              Correspondance : chaîne (string, ascii_string) → PartialSearchFilter ; énumération ou type
-	 *              personnalisé → ExactFilter ; uuid/guid → UuidFilter ;
+	 * Description: Classification des champs Doctrine en paramètres de filtrage API Platform (QueryParameter), déclarés dans
+	 *              un catalogue <Entité>Filters (voir FilterCatalogueBuilder) relié à GetCollection et QueryCollection par
+	 *              `collection_filters`, en remplacement des #[ApiFilter] dépréciés depuis API Platform 4.4.
+	 *              Correspondance : champ status → StatusParameter(required: true) ; champ realm (relation ToOne ou
+	 *              colonne uuid d'une API sans Core) → RealmParameter(required: true) ; chaîne (string, ascii_string) →
+	 *              PartialSearchFilter ;
+	 *              énumération ou type personnalisé → ExactFilter ; uuid/guid → UuidFilter ;
 	 *              booléen → ExactFilter à schéma booléen ; numérique → ChainFilter(ExactFilter + ComparisonFilter) ;
 	 *              date/heure → DateFilter ; relation ToOne → IriFilter ; relation ToMany ou champ nullable → ExistsFilter
 	 *              groupé ; tri → SortFilter groupé.
 	 *              Fonctions pures : définitions (buildDefinitions), rendu PHP (renderParameters), imports requis
 	 *              (requiredFqcns) et exemples de requêtes valides et invalides pour les tests générés
-	 *              (buildQueryExamples). Les champs exclus et le tri sur les relations ToOne se règlent par la
+	 *              (buildQueryExamples), paramètres obligatoires des requêtes de collection (buildRequiredQuery). Les champs
+	 *              exclus et le tri sur les relations ToOne se règlent par la
 	 *              configuration (filters.*).
 	 */
 
@@ -31,7 +35,7 @@
 
 	/**
 	 * Transforme les champs d'une entité Doctrine en DÉFINITIONS de paramètres API Platform
-	 * (#[QueryParameter]) puis les rend en code PHP.
+	 * (QueryParameter) puis les rend en code PHP, destiné au tableau retourné par `parameters()` d'un catalogue.
 	 *
 	 * Remplace la génération historique des attributs #[ApiFilter] (dépréciés depuis API Platform 4.4,
 	 * supprimés en 6.0). La classification est une fonction pure (aucun accès disque, aucune
@@ -39,6 +43,8 @@
 	 *
 	 * Correspondance avec le contrat d'URL historique (voir migration-audit.md, annexe 12) :
 	 *
+	 *  - champ « status » (hors relation)       : StatusParameter(required)       ?status=STATUS_ACTIVATE
+	 *  - champ « realm » (relation ToOne ou uuid) : RealmParameter(required)      ?realm=<uuid>
 	 *  - string, ascii_string (hors énumération) : PartialSearchFilter          ?name=chai (LIKE %chai%, sans casse)
 	 *  - énumération, type personnalisé         : ExactFilter                     ?status=draft
 	 *  - uuid / guid (hors id)                  : UuidFilter                      ?ref=<uuid>
@@ -50,11 +56,12 @@
 	 *  - tri                                    : SortFilter                      ?order[name]=asc
 	 *
 	 * Structure d'une définition :
-	 *  - 'kind'       : partial | exact | uuid | boolean | numeric | date | iri | exists | sort
+	 *  - 'kind'       : status | realm | partial | exact | uuid | boolean | numeric | date | iri | exists | sort
 	 *  - 'key'        : clé du paramètre = nom d'URL (peut contenir le placeholder :property)
 	 *  - 'property'   : propriété ciblée (kinds à propriété unique), null sinon
 	 *  - 'properties' : propriétés ciblées (exists / sort), liste vide sinon
-	 *  - 'sample'     : valeur d'exemple pour les tests générés (première valeur d'une énumération), facultative
+	 *  - 'sample'     : valeur d'exemple pour les tests générés (première valeur d'une énumération ; STATUS_ACTIVATE pour
+	 *                   un status sans énumération), facultative
 	 *
 	 * Les champs exclus et le tri sur les relations ToOne se règlent par la configuration
 	 * (`filters.excluded_fields`, `filters.sort_on_to_one_relations`).
@@ -109,6 +116,12 @@
 		 */
 		private const array PARTIAL_TYPES = ['string', 'ascii_string'];
 
+		/** Valeur d'un status sans énumération dans les tests générés (convention des applications EasyTax). */
+		private const string DEFAULT_STATUS_SAMPLE = 'STATUS_ACTIVATE';
+
+		/** Valeur d'exemple d'un UUID (colonne uuid, paramètre realm) dans les tests générés. */
+		private const string SAMPLE_UUID = '00000000-0000-7000-8000-000000000000';
+
 		/**
 		 * Classe de filtre (nom court) associée à chaque kind à propriété unique.
 		 *
@@ -162,7 +175,8 @@
 						continue;
 					}
 
-					$definitions[] = $this->single('iri', $fieldName); /* relation ToOne : filtrage par IRI */
+					/* relation ToOne : filtrage par IRI ; « realm » : paramètre obligatoire de l'application */
+					$definitions[] = $this->single($fieldName === 'realm' ? 'realm' : 'iri', $fieldName);
 
 					if ($info['nullable']) {
 						$existsProps[] = $fieldName;
@@ -189,6 +203,8 @@
 				$isEnum = is_array($info['enumCases'] ?? null) && $info['enumCases'] !== [];
 
 				$kind = match (true) {
+					$fieldName === 'status'                                => 'status', /* paramètres obligatoires de l'application */
+					$fieldName === 'realm'                                 => 'realm',  /* colonne uuid : API qui référence le Realm d'une autre API */
 					in_array($type, self::DATE_TYPES, true)                => 'date',
 					$type === 'boolean'                                    => 'boolean',
 					in_array($type, self::NUMERIC_TYPES, true)             => 'numeric',
@@ -200,8 +216,11 @@
 				$definition = $this->single($kind, $fieldName);
 
 				/* Énumération : l'exemple de test doit être une valeur autorisée (sinon la requête est rejetée). */
-				if ($kind === 'exact' && $isEnum) {
+				if (($kind === 'exact' || $kind === 'status') && $isEnum) {
 					$definition['sample'] = (string)$info['enumCases'][0];
+				}
+				elseif ($kind === 'status') {
+					$definition['sample'] = self::DEFAULT_STATUS_SAMPLE;
 				}
 
 				$definitions[] = $definition;
@@ -222,8 +241,8 @@
 		/* ── Rendu PHP ─── */
 
 		/*
-		 * Rend les définitions en lignes de code PHP, prêtes à être placées dans un tableau
-		 * `parameters: [ ... ]`. Chaque entrée se termine par une virgule.
+		 * Rend les définitions en lignes de code PHP, prêtes à être placées dans le tableau retourné par
+		 * `parameters()` d'un catalogue. Chaque entrée se termine par une virgule.
 		 *
 		 * Paramètre $definitions : définitions issues de buildDefinitions().
 		 * Paramètre $indent      : indentation ajoutée devant chaque ligne.
@@ -243,6 +262,8 @@
 				$prop = $definition['property'] !== null ? $this->quote($definition['property']) : '';
 
 				$block = match ($definition['kind']) {
+					'status'                                  => ["{$key} => new {$this->shortName($this->statusClass())}(required: true),"],
+					'realm'                                   => ["{$key} => new {$this->shortName($this->realmClass())}(required: true),"],
 					'partial', 'exact', 'uuid', 'date', 'iri' => [
 						"{$key} => new QueryParameter(filter: new " . self::KIND_TO_FILTER[$definition['kind']] . "(), property: {$prop}),",
 					],
@@ -279,7 +300,8 @@
 		 * Retourne les FQCN à importer pour que le code rendu par renderParameters() soit valide.
 		 *
 		 * Liste vide si aucune définition : aucun import de filtre ni de QueryParameter n'est alors
-		 * nécessaire (déduplication et tri inclus).
+		 * nécessaire (déduplication et tri inclus). QueryParameter n'est importé que si une définition le
+		 * construit : les paramètres status et realm sont des classes de l'application.
 		 */
 		/**
 		 * @param list<FilterDefinition> $definitions
@@ -292,11 +314,17 @@
 			}
 
 			$ns    = 'ApiPlatform\\Doctrine\\Orm\\Filter\\';
-			$fqcns = ['ApiPlatform\\Metadata\\QueryParameter'];
+			$fqcns = [];
 
 			foreach ($definitions as $definition) {
+				if (!in_array($definition['kind'], ['status', 'realm'], true)) {
+					$fqcns[] = 'ApiPlatform\\Metadata\\QueryParameter';
+				}
+
 				$fqcns = [
 					...$fqcns, ...match ($definition['kind']) {
+						'status'  => [$this->statusClass()],
+						'realm'   => [$this->realmClass()],
 						'partial' => [$ns . 'PartialSearchFilter'],
 						'exact'   => [$ns . 'ExactFilter'],
 						'uuid'    => [$ns . 'UuidFilter'],
@@ -350,7 +378,7 @@
 						$valid[] = ['label' => "exact {$prop}", 'query' => [$prop => $definition['sample'] ?? 'test']];
 						break;
 					case 'uuid':
-						$valid[] = ['label' => "uuid {$prop}", 'query' => [$prop => '00000000-0000-7000-8000-000000000000']];
+						$valid[] = ['label' => "uuid {$prop}", 'query' => [$prop => self::SAMPLE_UUID]];
 						break;
 					case 'boolean':
 						$valid[] = ['label' => "boolean {$prop}", 'query' => [$prop => 'true']];
@@ -378,14 +406,56 @@
 						$invalid[] = ['label' => "order {$definition['properties'][0]} direction invalide", 'query' => ['order' => [$definition['properties'][0] => 'sideways']]];
 						break;
 					default:
-						break; /* iri : pas d'exemple, une IRI existante est nécessaire */
+						break; /* iri : pas d'exemple, une IRI existante est nécessaire ; status et realm : voir buildRequiredQuery() */
 				}
 			}
 
 			return compact('valid', 'invalid');
 		}
 
+		/*
+		 * Paramètres OBLIGATOIRES des requêtes de collection (status, realm) : sans eux, toute requête de
+		 * collection est rejetée en 422. Les tests générés les ajoutent à chaque requête.
+		 *
+		 * Retour : [nom du paramètre => valeur d'exemple], vide si la collection n'en exige aucun.
+		 */
+		/**
+		 * @param list<FilterDefinition> $definitions
+		 *
+		 * @return array<string, string>
+		 */
+		public function buildRequiredQuery(array $definitions): array {
+			$required = [];
+
+			foreach ($definitions as $definition) {
+				$prop = (string)$definition['property'];
+
+				match ($definition['kind']) {
+					'status' => $required[$prop] = $definition['sample'] ?? self::DEFAULT_STATUS_SAMPLE,
+					'realm'  => $required[$prop] = self::SAMPLE_UUID,
+					default  => null,
+				};
+			}
+
+			return $required;
+		}
+
 		/* ── Utilitaires ─── */
+
+		/* FQCN du paramètre « status » de l'application (celui de la configuration, 'App\System\Filter\StatusParameter' sans configuration). */
+		private function statusClass(): string {
+			return $this->config->statusParameterClass ?? 'App\\System\\Filter\\StatusParameter';
+		}
+
+		/* FQCN du paramètre « realm » de l'application (celui de la configuration, 'App\System\Filter\RealmParameter' sans configuration). */
+		private function realmClass(): string {
+			return $this->config->realmParameterClass ?? 'App\\System\\Filter\\RealmParameter';
+		}
+
+		/* Nom court d'un FQCN : 'App\System\Filter\StatusParameter' → 'StatusParameter'. */
+		private function shortName(string $fqcn): string {
+			return substr($fqcn, (int)strrpos($fqcn, '\\') + 1);
+		}
 
 		/*
 		 * Fabrique une définition à propriété unique dont la clé est le nom de la propriété.

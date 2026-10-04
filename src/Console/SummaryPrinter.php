@@ -118,7 +118,7 @@
 			}
 
 			if ($options->graphqlFilters) {
-				$io->writeln('<comment>GraphQL :</comment> filtres activés (inclus par défaut via #[ApiResource])');
+				$io->writeln('<comment>GraphQL :</comment> filtres activés (inclus par défaut : le catalogue est relié à QueryCollection)');
 			}
 
 			if ($options->withMercure) {
@@ -131,7 +131,7 @@
 			$io->writeln($totalUploads > 0 ? sprintf('  • %d champ(s) File dans %d entité(s)', $totalUploads, $entitiesWithUploads) : '  • Aucun champ File détecté');
 			$io->writeln($totalBooleans > 0 ? sprintf('  • %d champ(s) booléen(s) dans %d entité(s)', $totalBooleans, $entitiesWithBooleans) : '  • Aucun champ booléen détecté');
 			$io->writeln(sprintf('  • %d entité(s) modifiée(s) — #[ApiResource] injecté', $modified));
-			$io->writeln(sprintf('  • %d fichier(s) créé(s) — DTOs · Processors · Providers', $created));
+			$io->writeln(sprintf('  • %d fichier(s) créé(s) — DTOs · Processors · Providers · Filtres', $created));
 			$io->writeln(sprintf('  • %d fichier(s) ignoré(s) — utiliser --force pour écraser', $skipped));
 
 			if ($errors > 0) {

@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+{{ uses_block|raw }}
+
+/**
+ * Catalogue des paramètres de filtrage et de tri de la collection {{ entity_name }} (REST et GraphQL).
+ *
+ * Relié à GetCollection et QueryCollection de l'entité par
+ * `extraProperties: ['collection_filters' => {{ entity_name }}Filters::class]`.
+ * Fichier généré par `generate:resource` : le régénérer avec --force écrase les personnalisations.
+ */
+final class {{ entity_name }}Filters implements {{ interface_name }}
+{
+    public function parameters(): array
+    {
+        return [
+{{ parameters_block|raw }}
+        ];
+    }
+}

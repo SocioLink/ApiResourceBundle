@@ -17,7 +17,8 @@
 	 *              Regroupe tout ce qui était auparavant codé en dur : racine PSR-4 et dossier des sources, espaces de noms
 	 *              des entités, DTOs et State (stockés en absolu), espace de noms et dossier des tests générés, rôle
 	 *              d'administration, champs système exclus des CreateDto et UpdateDto, booléens soft-delete/soft-erase,
-	 *              champs exclus des filtres, tri sur les relations ToOne et dossier de surcharge des gabarits.
+	 *              champs exclus des filtres, tri sur les relations ToOne, catalogues de filtres (espace de noms, contrat
+	 *              et paramètres status/realm de l'application) et dossier de surcharge des gabarits.
 	 *              Les valeurs par défaut reproduisent les conventions historiques : un projet standard n'a aucune
 	 *              configuration à écrire. Le chemin du projet est normalisé en séparateurs « / » (Windows compris).
 	 */
@@ -33,7 +34,8 @@
 	 * Les valeurs par défaut reproduisent exactement le comportement historique : un projet qui
 	 * suit les conventions actuelles n'a AUCUNE configuration à écrire.
 	 *
-	 * Les espaces de noms `entity`, `dto` et `state` sont exprimés RELATIVEMENT à `rootNamespace`
+	 * Les espaces de noms `entity`, `dto`, `state` et `filters`, ainsi que les classes du contrat des catalogues
+	 * (`filterInterface`, `statusParameter`, `realmParameter`), sont exprimés RELATIVEMENT à `rootNamespace`
 	 * en entrée (ex. 'Entity'), et stockés en absolu (ex. 'App\Entity').
 	 *
 	 * @internal Construit par ApiResourceBundle à partir de la configuration `sociolink_api_resource`.
@@ -101,6 +103,18 @@
 		/** Espace de noms absolu des tests fonctionnels générés (ex. 'App\Tests\Functional'). */
 		public string $testNamespace;
 
+		/** Espace de noms absolu des catalogues de filtres générés (ex. 'App\Filters'). */
+		public string $filterNamespace;
+
+		/** FQCN du contrat des catalogues, propre à l'application (ex. 'App\Filters\CollectionFiltersInterface'). */
+		public string $filterInterface;
+
+		/** FQCN du paramètre de filtre « status » obligatoire, propre à l'application (ex. 'App\System\Filter\StatusParameter'). */
+		public string $statusParameterClass;
+
+		/** FQCN du paramètre de filtre « realm » obligatoire, propre à l'application (ex. 'App\System\Filter\RealmParameter'). */
+		public string $realmParameterClass;
+
 		/** Dossier absolu du projet, séparateurs normalisés en « / », sans « / » final. */
 		public string $projectDir;
 
@@ -115,6 +129,10 @@
 		 * Paramètre $templatesDirectory   : dossier de gabarits Twig prioritaires (surcharge), ou null.
 		 * Paramètre $filterExcludedFields : champs exclus des paramètres de filtrage et de tri.
 		 * Paramètre $sortOnToOneRelations : autorise le tri sur les relations ToOne (order[author]=asc).
+		 * Paramètre $customTypes          : types Doctrine personnalisés ajoutés ou redéfinis (nom → FQCN).
+		 * Paramètre $filterNamespace      : espace de noms des catalogues de filtres, relatif à $rootNamespace.
+		 * Paramètre $filterInterface      : contrat des catalogues, relatif à $rootNamespace.
+		 * Paramètres $status/$realm       : paramètres « status » et « realm » obligatoires, relatifs à $rootNamespace.
 		 */
 		/**
 		 * @param list<string>          $systemFields
@@ -140,6 +158,10 @@
 			public array       $filterExcludedFields = [],
 			public bool        $sortOnToOneRelations = false,
 			array              $customTypes = [],
+			string             $filterNamespace = 'Filters',
+			string             $filterInterface = 'Filters\\CollectionFiltersInterface',
+			string             $statusParameter = 'System\\Filter\\StatusParameter',
+			string             $realmParameter = 'System\\Filter\\RealmParameter',
 		) {
 			$this->projectDir      = rtrim(str_replace('\\', '/', $projectDir), '/');
 			$this->rootNamespace   = trim($rootNamespace, '\\');
@@ -147,6 +169,11 @@
 			$this->dtoNamespace    = $this->rootNamespace . '\\' . trim($dtoNamespace, '\\');
 			$this->stateNamespace  = $this->rootNamespace . '\\' . trim($stateNamespace, '\\');
 			$this->testNamespace   = trim($testNamespace, '\\');
+
+			$this->filterNamespace      = $this->rootNamespace . '\\' . trim($filterNamespace, '\\');
+			$this->filterInterface      = $this->rootNamespace . '\\' . trim($filterInterface, '\\');
+			$this->statusParameterClass = $this->rootNamespace . '\\' . trim($statusParameter, '\\');
+			$this->realmParameterClass  = $this->rootNamespace . '\\' . trim($realmParameter, '\\');
 			$this->customTypes     = array_map(static fn(string $class): string => ltrim($class, '\\'), $customTypes + self::DEFAULT_CUSTOM_TYPES);
 		}
 	}

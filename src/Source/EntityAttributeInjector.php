@@ -12,14 +12,15 @@
 	 * Author: Xavier KONGOLO <xsompwe@gmail.com>
 	 * Creation Date: 21/09/2026
 	 *
-	 * Description: Injection de l'attribut #[ApiResource] et de ses paramètres de filtrage #[QueryParameter] dans le
-	 *              fichier source des entités Doctrine.
+	 * Description: Injection de l'attribut #[ApiResource] dans le fichier source des entités Doctrine, relié à son catalogue
+	 *              de filtres (<Entité>Filters, voir FilterCatalogueBuilder).
 	 *              Construit le bloc selon le mode : opérations liées aux DTOs, Processors et Provider générés (Get,
 	 *              GetCollection, Post, Patch, Toggle, endpoints par booléen, upload multipart), ou opérations
-	 *              nues pour --only-resource et --all ; injecte les paramètres de filtrage QueryParameter directement
-	 *              sur #[ApiResource] (appliqués nativement à REST et GraphQL) ; y ajoute routePrefix, mercure
-	 *              (--with-mercure / --public), le tri par défaut et les opérations GraphQL. Injecte aussi les
-	 *              sous-ressources sur les entités enfants des relations OneToMany.
+	 *              nues pour --only-resource et --all ; relie GetCollection et QueryCollection au catalogue par
+	 *              `extraProperties: ['collection_filters' => <Entité>Filters::class]` (REST et GraphQL, aucun
+	 *              `parameters:` sur l'entité) ; y ajoute routePrefix, mercure (--with-mercure / --public), le tri par
+	 *              défaut et les opérations GraphQL. Injecte aussi les sous-ressources sur les entités enfants des
+	 *              relations OneToMany, reliées au catalogue de l'enfant.
 	 *              Garanties : localisation par le tokeniseur PHP (ni chaînes ni commentaires), fins de ligne LF/CRLF
 	 *              respectées, régénération idempotente, --force ne retire que ce que le générateur a produit (les
 	 *              #[ApiFilter] de propriété, imports utilisés et sous-ressources sont conservés), et --dry-run / --preview
@@ -33,13 +34,14 @@
 	use Symfony\Component\Console\Style\SymfonyStyle;
 
 	/**
-	 * Injecte les attributs #[ApiResource] (avec leurs paramètres de filtrage #[QueryParameter])
-	 * dans les fichiers source des entités Doctrine.
+	 * Injecte les attributs #[ApiResource] dans les fichiers source des entités Doctrine, reliés à leur
+	 * catalogue de filtres.
 	 *
-	 * Les filtres ne sont plus générés sous forme de #[ApiFilter] (déprécié depuis API Platform 4.4,
-	 * supprimé en 6.0) ni attachés à l'opération GetCollection, mais déclarés en tant que `parameters:` directement
-	 * sur l'attribut #[ApiResource], s'appliquant ainsi automatiquement à la fois aux opérations REST et GraphQL :
-	 * la classification des champs est déléguée à {@see FilterDefinitionBuilder}.
+	 * Les filtres ne sont ni des #[ApiFilter] (dépréciés depuis API Platform 4.4, supprimés en 6.0) ni des
+	 * `parameters:` posés sur l'entité : ils sont déclarés dans un catalogue <Entité>Filters (voir
+	 * {@see FilterCatalogueBuilder}), que GetCollection et QueryCollection désignent par
+	 * `extraProperties: ['collection_filters' => <Entité>Filters::class]`. La classification des champs est
+	 * déléguée à {@see FilterDefinitionBuilder}. Une entité sans champ filtrable n'a ni catalogue ni référence.
 	 *
 	 * Le contenu du bloc #[ApiResource] varie selon les options :
 	 *
@@ -48,7 +50,7 @@
 	 *  --all            : identique à --only-resource (artefacts générés mais non liés)
 	 *  --toggle-boolean : opérations + Toggle pour TOUS les booléens (y compris itDeleted/itErased)
 	 *  --detach-boolean : Patch individuel par booléen à la place du Patch /toggle unique
-	 *  --graphql-filters: conservé pour rétrocompatibilité (les filtres s'appliquent déjà nativement à GraphQL)
+	 *  --graphql-filters: conservé pour rétrocompatibilité (le catalogue est déjà relié à QueryCollection)
 	 *  --with-mercure   : injecte la directive mercure (privée : ['private' => true])
 	 *  --with-mercure --public : injecte mercure: true (mises à jour publiées publiquement)
 	 *
@@ -260,14 +262,11 @@
 				}
 			}
 
-			$definitions = $this->filterBuilder->buildDefinitions($targetFields);
-
-			$parametersLine = '';
-			if ($definitions !== []) {
-				$parametersLine = "    parameters: [\n"
-				                  . implode("\n", $this->filterBuilder->renderParameters($definitions, '        ')) . "\n"
-				                  . "    ],\n";
-			}
+			/* La sous-ressource est reliée au catalogue de l'ENFANT (même catalogue que sa propre collection). */
+			$catalogue     = $this->filterBuilder->buildDefinitions($targetFields) !== [] ? $this->namespaceResolver->getFilterClass($targetClass) : null;
+			$getCollection = $catalogue !== null
+				? "new GetCollection(extraProperties: ['collection_filters' => {$targetName}Filters::class])"
+				: 'new GetCollection()';
 
 			/*
 			 * shortName explicite et propre au couple parent/enfant : sans lui, la sous-ressource partage le shortName
@@ -277,8 +276,7 @@
 			$attrBlock = "#[ApiResource(\n"
 			             . "    uriTemplate: '{$uriTemplate}',\n"
 			             . "    shortName: '{$parentName}{$targetName}',\n"
-			             . "    operations: [new GetCollection()],\n"
-			             . $parametersLine
+			             . "    operations: [{$getCollection}],\n"
 			             . "    uriVariables: ['{$parentVarName}' => new Link(toProperty: '{$mappedBy}', fromClass: {$parentName}::class)],\n"
 			             . ')]';
 
@@ -287,7 +285,7 @@
 				                                           'ApiPlatform\\Metadata\\GetCollection',
 				                                           'ApiPlatform\\Metadata\\Link',
 				                                           $parentClass,
-				                                           ...$this->filterBuilder->requiredFqcns($definitions),
+				                                           ...($catalogue !== null ? [$catalogue] : []),
 			                                           ]));
 			sort($requiredFqcns);
 
@@ -340,7 +338,9 @@
 			$uriBase     = $this->namespaceResolver->toApiPlatformUriBase($entityName);
 			$link        = $options->linksArtifactsToResource(); /* false en --only-resource / --all : opérations « nues » */
 
-			$definitions = $this->filterBuilder->buildDefinitions($fields);
+			/* Catalogue de filtres : référencé par GetCollection et QueryCollection ; absent si aucun champ n'est filtrable. */
+			$catalogue = $this->filterBuilder->buildDefinitions($fields) !== [] ? $this->namespaceResolver->getFilterClass($entityClass) : null;
+			$extra     = $catalogue !== null ? "extraProperties: ['collection_filters' => {$entityName}Filters::class]" : '';
 
 			/* La virgule finale de chaque ligne est indispensable : les lignes sont jointes sans séparateur. */
 			$operationLines = [];
@@ -348,7 +348,7 @@
 			/* --with-provider : le Provider généré est câblé sur Get (sauf en mode « libre », où rien n'est lié). */
 			$get = $link && $options->withProvider ? "new Get(provider: {$entityName}Provider::class)" : 'new Get()';
 
-			$operationLines[] = "        {$get}, new GetCollection(),";
+			$operationLines[] = "        {$get}, new GetCollection({$extra}),";
 
 			if ($link) {
 				$operationLines[] = "        new Post(input: {$entityName}CreateDto::class, processor: {$entityName}CreateProcessor::class),";
@@ -408,29 +408,19 @@
 
 			$directivesLine = $directives !== [] ? '    ' . implode(', ', $directives) . ",\n" : '';
 
-			/*
-			 * Paramètres de filtrage attachés à #[ApiResource] : API Platform les cascade automatiquement
-			 * à la fois aux opérations REST (GetCollection) et GraphQL (QueryCollection).
-			 */
-			$parametersBlock = '';
-			if ($definitions !== []) {
-				$parametersBlock = "    parameters: [\n"
-				                   . implode("\n", $this->filterBuilder->renderParameters($definitions, '        ')) . "\n"
-				                   . "    ],\n";
-			}
-
-			$graphQl = "    graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page')],\n";
+			/* Le même catalogue relie la collection REST (GetCollection) et la requête GraphQL (QueryCollection). */
+			$queryCollection = "new QueryCollection(paginationType: 'page'" . ($catalogue !== null ? ", {$extra}" : '') . ')';
+			$graphQl         = "    graphQlOperations: [new Query(), {$queryCollection}],\n";
 
 			$attrBlock = "#[ApiResource(\n"
 			             . "    operations: {$operationsBlock},\n"
-			             . $parametersBlock
 			             . $directivesLine
 			             . $graphQl
 			             . ')]';
 
 			$requiredFqcns = $this->buildRequiredFqcns(
 				$entityName, $dtoNs, $stateNs, $options, $allBooleanFields, $uploadFields,
-				$this->filterBuilder->requiredFqcns($definitions),
+				$catalogue !== null ? [$catalogue] : [],
 			);
 
 			return [$attrBlock, $requiredFqcns];
@@ -469,7 +459,7 @@
 		 * Retourne la liste triée et dédupliquée des FQCN à importer dans l'entité.
 		 *
 		 * Les imports de DTO/Processors ne sont nécessaires que si les artefacts sont RÉFÉRENCÉS dans les
-		 * opérations (linksArtifactsToResource()). $filterFqcns vient de FilterDefinitionBuilder::requiredFqcns().
+		 * opérations (linksArtifactsToResource()). $filterFqcns : le catalogue de filtres de l'entité, s'il existe.
 		 */
 		/**
 		 * @param array<string, mixed>            $allBooleanFields
@@ -682,7 +672,7 @@
 		}
 
 		/*
-		 * Indique si un FQCN a été importé par le générateur : liste explicite, ou DTO/Processor/Provider généré.
+		 * Indique si un FQCN a été importé par le générateur : liste explicite, ou DTO/Processor/Provider/catalogue généré.
 		 */
 		private function isGeneratorOwned(string $fqcn): bool {
 			if (in_array($fqcn, self::OWNED_FQCNS, true)) {
@@ -693,6 +683,11 @@
 				if (str_starts_with($fqcn, $namespace . '\\') && preg_match('/(?:Dto|Processor|Provider)$/', $fqcn) === 1) {
 					return true;
 				}
+			}
+
+			/* Catalogues de filtres générés (<Entité>Filters). */
+			if (str_starts_with($fqcn, $this->config->filterNamespace . '\\') && str_ends_with($fqcn, 'Filters')) {
+				return true;
 			}
 
 			return false;

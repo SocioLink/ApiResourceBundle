@@ -14,4 +14,8 @@ class Category
 
     #[ORM\Column(length: 80)]
     private string $name = '';
+
+    /* Relation « realm » : le générateur la traite par RealmParameter, paramètre obligatoire de l'application. */
+    #[ORM\ManyToOne(targetEntity: Article::class)]
+    private ?Article $realm = null;
 }

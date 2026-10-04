@@ -38,7 +38,8 @@
 	 *  - un test PATCH (mise à jour partielle) ;
 	 *  - un test GET Item (lecture unitaire) ;
 	 *  - des tests des paramètres de filtrage générés (requêtes valides acceptées, direction de tri invalide
-	 *    rejetée en 422), construits depuis les mêmes définitions que celles injectées dans l'entité.
+	 *    rejetée en 422), construits depuis les mêmes définitions que celles du catalogue de filtres de l'entité.
+	 *    Les paramètres obligatoires (status, realm) sont ajoutés à chaque requête de collection.
 	 *
 	 * Le code généré cible API Platform 5.0 : les utilitaires de test sont dans le paquet
 	 * `api-platform/test` (namespace ApiPlatform\Test).
@@ -86,7 +87,11 @@
 				$requiredFields[] = ['name' => (string)$fieldName, 'value' => $this->sampleValue((string)$fieldName, $info)];
 			}
 
-			$examples = $this->filterBuilder->buildQueryExamples($this->filterBuilder->buildDefinitions($fields));
+			$definitions = $this->filterBuilder->buildDefinitions($fields);
+			$examples    = $this->filterBuilder->buildQueryExamples($definitions);
+
+			/* status et realm sont obligatoires sur la collection : toute requête de collection les porte. */
+			$required = $this->filterBuilder->buildRequiredQuery($definitions);
 
 			$toRow = fn(array $example): array => ['label' => $example['label'], 'query' => $this->exportArray($example['query'])];
 
@@ -104,6 +109,7 @@
 				'entity_name'     => $entityName,
 				'uri_base'        => $uriBase,
 				'required_fields' => $requiredFields,
+				'required_query'  => $required !== [] ? $this->exportArray($required) : '',
 				'valid_filters'   => array_map($toRow, $examples['valid']),
 				'invalid_filters' => array_map($toRow, $examples['invalid']),
 			]);

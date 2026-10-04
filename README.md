@@ -41,14 +41,14 @@ leurs entités en dépendent aussi en production.
 ## Installation
 
 ```bash
-composer require --dev sociolink/api-resource-bundle:^1.0
+composer require --dev sociolink/api-resource-bundle:^2.0
 ```
 
 ### Versions
 
 Le bundle suit le [versionnage sémantique](https://semver.org/lang/fr/) ; chaque version est un tag
 Git `vX.Y.Z`, publié sur Packagist, et décrite dans le [CHANGELOG](CHANGELOG.md). Préférez la contrainte
-`^1.0` à `dev-main` : `composer update` n'apporte alors que des versions publiées et compatibles.
+`^2.0` à `dev-main` : `composer update` n'apporte alors que des versions publiées et compatibles.
 
 Le **contrat public**, dont toute rupture impose une version majeure, comprend : le nom et les options de
 la commande, les clés de configuration `sociolink_api_resource.*`, et la forme du code généré (noms et
@@ -161,7 +161,7 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 
 | Option                    | Effet                                                              |
 |---------------------------|--------------------------------------------------------------------|
-| `--only-resource` / `-o`  | Injecte `#[ApiResource]` + filtres uniquement, aucun artefact.     |
+| `--only-resource` / `-o`  | Injecte `#[ApiResource]` + catalogue de filtres uniquement, aucun autre artefact. |
 | `--with-provider` / `-w`  | Mode par défaut + Provider pour `GET {id}`, câblé sur `Get`.       |
 | `--toggle-boolean` / `-t` | Un `ToggleDto`/`ToggleProcessor` unique pour tous les booléens.    |
 | `--detach-boolean` / `-d` | Un DTO + Processor `PATCH` individuel par booléen.                 |
@@ -175,7 +175,7 @@ Les entités sont regroupées par namespace (ordre alphabétique), numérotées 
 | `--preview`         | Affiche le code généré dans la console (implique `--dry-run`).                                                                     |
 | `--with-tests`      | Génère des tests fonctionnels `ApiTestCase` (paquet `api-platform/test`).                                                          |
 | `--sub-resources`   | Sous-ressources pour les relations `OneToMany` (`shortName` propre `{Parent}{Enfant}`, placées après la ressource principale).     |
-| `--graphql-filters` | Conservée pour compatibilité : les paramètres déclarés sur `#[ApiResource]` s'appliquent déjà nativement à GraphQL. |
+| `--graphql-filters` | Conservée pour compatibilité : le catalogue de filtres est déjà relié à `QueryCollection`, donc à GraphQL. |
 | `--with-mercure`    | Injecte la directive `mercure` (**privée** par défaut : `mercure: ['private' => true]`).                                           |
 | `--public`          | Avec `--with-mercure` : `mercure: true` (mises à jour publiées **publiquement**) au lieu de privées. Refusé sans `--with-mercure`. |
 
@@ -194,18 +194,68 @@ sont tout de même générées.
 | `<Entité><Champ>Dto` + Processor       | `PATCH /{id}/toggle-<champ>` (`--detach-boolean`)                       |
 | `<Entité>Upload<Champ>Dto` + Processor | `PATCH /{id}/<champ>` multipart, pour chaque `#[Vich\UploadableField]`  |
 | `<Entité>Provider`                     | `GET /{id}` avec chargement des relations ToOne (`--with-provider`)     |
+| `<Entité>Filters`                      | Catalogue de filtres de la collection, REST et GraphQL (voir ci-dessous) |
 
 ## Filtres générés
 
-Les filtres sont déclarés en tant que paramètres `parameters: [ ... ]` directement sur l'attribut
-`#[ApiResource]` (`#[ApiFilter]`, déprécié depuis API Platform 4.4, n'est jamais généré).
-Grâce à ce positionnement sur la ressource, API Platform cascade automatiquement ces filtres à la fois
-sur les routes de collection REST (`GetCollection`) et sur les collections GraphQL (`QueryCollection`) :
+Chaque entité reçoit un **catalogue de filtres** `<Entité>Filters`, classe de l'application qui retourne ses
+`QueryParameter` (`#[ApiFilter]`, déprécié depuis API Platform 4.4, n'est jamais généré). Le catalogue est
+écrit dans `Filters/<Sous-espace>/` (même sous-espace que l'entité) et l'entité le désigne, sur `GetCollection`
+**et** `QueryCollection`, sans déclarer aucun paramètre :
+
+```php
+#[ApiResource(
+    operations: [new Get(), new GetCollection(extraProperties: ['collection_filters' => ArticleFilters::class]), /* … */],
+    graphQlOperations: [new Query(), new QueryCollection(paginationType: 'page', extraProperties: ['collection_filters' => ArticleFilters::class])],
+)]
+class Article { /* … */ }
+```
+
+```php
+final class ArticleFilters implements CollectionFiltersInterface
+{
+    public function parameters(): array
+    {
+        return [
+            'title'  => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),
+            'status' => new StatusParameter(required: true),
+            // …
+            'order[:property]' => new QueryParameter(filter: new SortFilter(), properties: ['title', 'status']),
+        ];
+    }
+}
+```
+
+Une entité sans champ filtrable n'a ni catalogue ni référence. Le catalogue n'est écrit que si l'entité y renvoie :
+quand `#[ApiResource]` est déjà présent et que `--force` est absent, aucun catalogue orphelin n'est créé.
+Avec `--force`, un catalogue existant est **écrasé** (comme les DTOs) : n'utilisez pas `--force` sur une entité dont le
+catalogue a été personnalisé. Une sous-ressource (`--sub-resources`) désigne le catalogue de l'entité **enfant**, généré au
+besoin.
+
+#### Ce que l'application doit fournir
+
+Le catalogue, `StatusParameter` et `RealmParameter` appartiennent à l'application : le bundle ne génère que les
+catalogues, jamais ces classes. Par défaut (relatif à `root_namespace`, configurable dans `filters.*`) :
+
+| Classe                                   | Rôle                                                                                              |
+|------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `Filters\CollectionFiltersInterface`     | Contrat des catalogues : `parameters(): array` (`array<string, QueryParameter>`).                 |
+| `System\Filter\StatusParameter`          | `QueryParameter` obligatoire (`new StatusParameter(required: true)`) pour un champ `status`.      |
+| `System\Filter\RealmParameter`           | `QueryParameter` obligatoire (`new RealmParameter(required: true)`) pour un champ `realm`.        |
+| une décoration de `ResourceMetadataCollectionFactoryInterface` | Lit `extraProperties['collection_filters']` de `GetCollection` et `QueryCollection`, instancie le catalogue et le pose comme `parameters` de l'opération. API Platform ne connaît pas cette clé : sans la décoration, les filtres ne s'appliquent pas. |
+
+Un champ nommé `status` produit `StatusParameter`, un champ nommé `realm` (relation ToOne **ou** colonne `uuid`, pour
+une API qui référence le Realm d'une autre API) produit `RealmParameter`. Les tests générés ajoutent ces paramètres
+obligatoires à chaque requête de collection.
+
+Types de paramètres générés :
 
 | Champ Doctrine                    | Filtre généré                                      | Requête                        |
 |-----------------------------------|----------------------------------------------------|--------------------------------|
 | `string`, `ascii_string`          | `PartialSearchFilter` (sous-chaîne, sans casse)    | `?name=chai` → `%chai%`        |
-| énumération, type personnalisé    | `ExactFilter`                                      | `?status=draft`                |
+| énumération, type personnalisé    | `ExactFilter`                                      | `?kind=draft`                  |
+| champ `status`                    | `StatusParameter(required: true)`                  | `?status=STATUS_ACTIVATE`      |
+| champ `realm` (ToOne ou `uuid`)   | `RealmParameter(required: true)`                   | `?realm=<uuid>`                |
 | `uuid` / `guid` (hors `id`)       | `UuidFilter`                                       | `?reference=<uuid>`            |
 | `boolean`                         | `ExactFilter` (schéma booléen)                     | `?active=true`                 |
 | `integer`, `float`, `decimal`     | `ChainFilter` (`ExactFilter` + `ComparisonFilter`) | `?price=25` · `?price[gte]=10` |
@@ -215,7 +265,7 @@ sur les routes de collection REST (`GetCollection`) et sur les collections Graph
 | tri                               | `SortFilter`                                       | `?order[name]=asc`             |
 
 Exclus de tout filtre : `id`, `text`, `json`, `array`, `simple_array`, `blob`, `binary`, `dateinterval`,
-ainsi que les champs listés dans `filters.excluded_fields`.
+ainsi que les champs listés dans `filters.excluded_fields`. Un champ `text` ou `json` nullable garde son `ExistsFilter`.
 
 Une chaîne est recherchée par sous-chaîne (`LOWER(champ) LIKE LOWER('%valeur%')`, avec `%` et `_`
 échappés). Une énumération (colonne `string` avec `enumType`) reste en égalité stricte, car ses valeurs
@@ -256,6 +306,10 @@ sociolink_api_resource:
     filters               :
         excluded_fields         : [ ]              # champs exclus des filtres et du tri (ex. createdBy)
         sort_on_to_one_relations: false  # autorise order[author]=asc
+        namespace               : Filters # catalogues <Entité>Filters, relatif à root_namespace → App\Filters
+        catalogue_interface     : Filters\CollectionFiltersInterface   # contrat des catalogues (à fournir)
+        status_parameter        : System\Filter\StatusParameter      # paramètre status obligatoire (à fournir)
+        realm_parameter         : System\Filter\RealmParameter       # paramètre realm obligatoire (à fournir)
     templates_directory   : null            # gabarits Twig prioritaires (surcharge), relatif au projet ou absolu
 ```
 
@@ -286,6 +340,8 @@ src/
 │   └── Article/
 │       ├── ArticleCreateDto.php
 │       └── ArticleUpdateDto.php
+├── Filters/
+│   └── ArticleFilters.php
 └── State/
     └── Article/
         ├── ArticleCreateProcessor.php
@@ -296,6 +352,20 @@ tests/
     └── Article/
         └── ArticleApiTest.php        (si --with-tests)
 ```
+
+## Migrer depuis 1.x
+
+La 2.0 change la forme du code généré ; la commande, ses options et les clés de configuration existantes sont inchangées.
+
+1. **Fournir les classes de support** dans le projet (voir [Ce que l'application doit fournir](#ce-que-lapplication-doit-fournir)) :
+   le contrat des catalogues, `StatusParameter`, `RealmParameter` et la décoration qui lit `collection_filters`. Sans elles, le
+   code généré ne se charge pas. Leurs noms se règlent par `filters.*` si les défauts ne conviennent pas.
+2. **Mettre à jour la contrainte** : `composer require --dev sociolink/api-resource-bundle:^2.0`.
+3. **Régénérer** les entités concernées avec `--force` : le bloc `#[ApiResource]` est réécrit (les `parameters: [...]` disparaissent,
+   `collection_filters` apparaît), le catalogue `<Entité>Filters` est créé et les imports devenus inutiles sont retirés. Les
+   catalogues existants sont écrasés : ne régénérez pas une entité dont le catalogue est personnalisé.
+4. Les entités déjà générées en 1.x **continuent de fonctionner** tant qu'elles ne sont pas régénérées : la migration n'est pas
+   obligatoire d'un seul bloc.
 
 ## Qualité
 

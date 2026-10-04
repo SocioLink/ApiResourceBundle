@@ -61,7 +61,7 @@
 		/*
 		 * Déclare les clés de configuration `sociolink_api_resource`.
 		 *
-		 * Les espaces de noms `entity_namespace`, `dto_namespace` et `state_namespace` sont relatifs à
+		 * Les espaces de noms `entity_namespace`, `dto_namespace`, `state_namespace` et `filters.*` sont relatifs à
 		 * `root_namespace` ; `tests.namespace` est absolu.
 		 */
 		public function configure(DefinitionConfigurator $definition): void {
@@ -107,6 +107,10 @@
 			     ->children()
 			     ->arrayNode('excluded_fields')->info('Champs exclus des paramètres de filtrage et de tri.')->scalarPrototype()->end()->defaultValue([])->end()
 			     ->booleanNode('sort_on_to_one_relations')->defaultFalse()->info('Autorise le tri sur les relations ToOne (order[author]=asc).')->end()
+			     ->scalarNode('namespace')->defaultValue('Filters')->cannotBeEmpty()->info('Espace de noms des catalogues de filtres générés (<Entité>Filters), relatif à root_namespace.')->end()
+			     ->scalarNode('catalogue_interface')->defaultValue('Filters\\CollectionFiltersInterface')->cannotBeEmpty()->info('Contrat implémenté par les catalogues, relatif à root_namespace (à créer dans le projet).')->end()
+			     ->scalarNode('status_parameter')->defaultValue('System\\Filter\\StatusParameter')->cannotBeEmpty()->info('Paramètre « status » obligatoire utilisé pour un champ status, relatif à root_namespace (à créer dans le projet).')->end()
+			     ->scalarNode('realm_parameter')->defaultValue('System\\Filter\\RealmParameter')->cannotBeEmpty()->info('Paramètre « realm » obligatoire utilisé pour une relation ToOne realm, relatif à root_namespace (à créer dans le projet).')->end()
 			     ->end()
 			     ->end()
 			     ->scalarNode('templates_directory')->defaultNull()->info('Dossier de gabarits Twig prioritaires (surcharge), relatif au projet ou absolu.')->end()
@@ -123,7 +127,10 @@
 		 *     state_namespace: string, tests: array{namespace: string, directory: string}, admin_role: string,
 		 *     system_fields: list<string>, update_system_fields: list<string>, boolean_special_fields: list<string>,
 		 *     custom_types: array<string, string>,
-		 *     filters: array{excluded_fields: list<string>, sort_on_to_one_relations: bool},
+		 *     filters: array{
+		 *         excluded_fields: list<string>, sort_on_to_one_relations: bool, namespace: string,
+		 *         catalogue_interface: string, status_parameter: string, realm_parameter: string
+		 *     },
 		 *     templates_directory: string|null
 		 * } $config
 		 */
@@ -147,6 +154,10 @@
 				                 '$filterExcludedFields' => $config['filters']['excluded_fields'],
 				                 '$sortOnToOneRelations' => $config['filters']['sort_on_to_one_relations'],
 				                 '$customTypes'          => $config['custom_types'],
+				                 '$filterNamespace'      => $config['filters']['namespace'],
+				                 '$filterInterface'      => $config['filters']['catalogue_interface'],
+				                 '$statusParameter'      => $config['filters']['status_parameter'],
+				                 '$realmParameter'       => $config['filters']['realm_parameter'],
 			                 ]);
 
 			$container->import('../config/services.php');

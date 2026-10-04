@@ -17,7 +17,8 @@
 	 *              Pour chaque entité : chargement des métadonnées, analyse des champs, puis selon le mode actif génération
 	 *              des DTOs et Processors Create/Update, du Provider GET {id}, du Toggle global ou des endpoints par
 	 *              booléen, des endpoints d'upload VichUploader, des tests fonctionnels et des sous-ressources OneToMany,
-	 *              et enfin injection de #[ApiResource] dans le fichier de l'entité.
+	 *              puis injection de #[ApiResource] dans le fichier de l'entité et génération de son catalogue de filtres
+	 *              (<Entité>Filters), écrit seulement quand l'entité y renvoie.
 	 *              Les fichiers existants ne sont écrasés qu'avec --force ; --dry-run et --preview n'écrivent rien
 	 *              (--preview affiche le code). Une erreur sur une entité est affichée et comptée sans interrompre les
 	 *              autres. cleanBeforeReinit() supprime uniquement les dossiers DTO et State des entités traitées.
@@ -36,6 +37,7 @@
 	use SocioLink\ApiResourceBundle\Source\TestBuilder;
 	use SocioLink\ApiResourceBundle\Source\FieldAnalyser;
 	use SocioLink\ApiResourceBundle\Source\ProviderBuilder;
+	use SocioLink\ApiResourceBundle\Source\FilterCatalogueBuilder;
 	use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
 	use SocioLink\ApiResourceBundle\Source\ProcessorBuilder;
 	use SocioLink\ApiResourceBundle\Source\GenerationOptions;
@@ -48,7 +50,7 @@
 	 *
 	 * Comportement selon le mode actif :
 	 *  - Défaut          : DTOs + Processors + injection #[ApiResource] liés
-	 *  --only-resource   : injection #[ApiResource] + filtres uniquement, aucun artefact
+	 *  --only-resource   : injection #[ApiResource] + catalogue de filtres uniquement, aucun artefact
 	 *  --with-provider   : mode défaut + Provider pour GET {id}
 	 *  --toggle-boolean  : mode défaut + ToggleDto/ToggleProcessor pour TOUS les booléens
 	 *  --detach-boolean  : mode défaut mais un DTO+Processor par booléen (pas de Toggle)
@@ -61,7 +63,7 @@
 		public function __construct(
 			private NamespaceResolver      $namespaceResolver, private FieldAnalyser $fieldAnalyser, private DtoBuilder $dtoBuilder, private ProcessorBuilder $processorBuilder,
 			private ProviderBuilder        $providerBuilder, private EntityAttributeInjector $entityAttributeInjector, private TestBuilder $testBuilder,
-			private EntityManagerInterface $entityManager, private GeneratorConfig $config,
+			private EntityManagerInterface $entityManager, private GeneratorConfig $config, private FilterCatalogueBuilder $filterCatalogueBuilder,
 		) {
 			$this->filesystem = new Filesystem();
 		}
@@ -283,6 +285,18 @@
 				allBooleanFields: $allBooleanFields, uploadFields: $uploadFields,
 			);
 
+			/*
+			 * Catalogue de filtres : écrit seulement si l'entité y renvoie. Quand l'injection est ignorée (ressource déjà
+			 * présente sans --force), le catalogue serait orphelin : il n'est pas écrit.
+			 */
+			if (!in_array($result['entity'], ['skipped', 'not_found', 'error'], true)) {
+				$catalogue = $this->filterCatalogueBuilder->build($entityClass, $fields);
+
+				if ($catalogue !== null) {
+					$result['filters'] = $this->writeFile($this->namespaceResolver->filterFilePath($entityClass), $catalogue, $options, $io);
+				}
+			}
+
 			/* Statistiques */
 			$result['_stats'] = ['booleanCount' => count($allBooleanFields), 'uploadCount' => count($uploadFields)];
 
@@ -312,9 +326,9 @@
 				$mappedBy    = (string)($info['mappedBy'] ?? '') !== '' ? (string)$info['mappedBy'] : lcfirst($entityName);
 
 				/*
-				 * Champs de l'entité ENFANT : la sous-ressource reprend ses paramètres de filtrage
-				 * (avant la migration vers QueryParameter, elle héritait des #[ApiFilter] de classe de l'enfant).
-				 * Si l'analyse échoue, la sous-ressource est générée sans paramètre plutôt que de bloquer la génération.
+				 * Champs de l'entité ENFANT : la sous-ressource est reliée au catalogue de filtres de l'enfant,
+				 * généré ici s'il n'existe pas encore.
+				 * Si l'analyse échoue, la sous-ressource est générée sans filtre plutôt que de bloquer la génération.
 				 */
 				try {
 					$targetFields = $this->fieldAnalyser->getEntityFields($this->entityManager->getClassMetadata($targetClass));
@@ -334,6 +348,14 @@
 					io          : $io,
 					targetFields: $targetFields,
 				);
+
+				if (!in_array($result["subResource{$targetShort}"], ['skipped', 'not_found', 'error'], true)) {
+					$catalogue = $this->filterCatalogueBuilder->build($targetClass, $targetFields);
+
+					if ($catalogue !== null) {
+						$result["filters{$targetShort}"] = $this->writeFile($this->namespaceResolver->filterFilePath($targetClass), $catalogue, $options, $io);
+					}
+				}
 			}
 		}
 

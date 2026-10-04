@@ -16,7 +16,8 @@
 	 *              ApiResourceBundle::loadExtension().
 	 *              La liste des services est EXPLICITE (aucun chargement par glob) pour ne jamais enregistrer par mégarde
 	 *              une classe utilitaire ou un objet de valeur : analyseurs (FieldAnalyser, FilterDefinitionBuilder,
-	 *              NamespaceResolver), générateurs (DtoBuilder, ProcessorBuilder, ProviderBuilder, TestBuilder), injecteur
+	 *              NamespaceResolver), générateurs (DtoBuilder, ProcessorBuilder, ProviderBuilder, FilterCatalogueBuilder,
+	 *              TestBuilder), injecteur
 	 *              d'attributs, découverte des entités, orchestrateur et services console (fabrique d'options, menu,
 	 *              résumé).
 	 *              Tous les services sont privés et autowirés ; les contrats ResourceGeneratorInterface et
@@ -42,6 +43,7 @@
 	use SocioLink\ApiResourceBundle\Twig\TwigEnvironmentFactory;
 	use SocioLink\ApiResourceBundle\Source\EntityAttributeInjector;
 	use SocioLink\ApiResourceBundle\Source\FilterDefinitionBuilder;
+	use SocioLink\ApiResourceBundle\Source\FilterCatalogueBuilder;
 	use SocioLink\ApiResourceBundle\Source\EntityDiscoveryInterface;
 	use SocioLink\ApiResourceBundle\Service\GenerateResourceService;
 	use SocioLink\ApiResourceBundle\Console\GenerationOptionsFactory;
@@ -59,7 +61,7 @@
 
 		/* ── Services de génération ─── */
 		foreach ([
-			         NamespaceResolver::class, FieldAnalyser::class, FilterDefinitionBuilder::class, DtoBuilder::class,
+			         NamespaceResolver::class, FieldAnalyser::class, FilterDefinitionBuilder::class, FilterCatalogueBuilder::class, DtoBuilder::class,
 			         ProcessorBuilder::class, ProviderBuilder::class, TestBuilder::class, EntityAttributeInjector::class,
 			         EntityDiscovery::class, GenerateResourceService::class,
 			         GenerationOptionsFactory::class, EntitySelector::class, SummaryPrinter::class,

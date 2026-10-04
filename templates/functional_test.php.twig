@@ -24,7 +24,7 @@ final class {{ entity_name }}ApiTest extends ApiTestCase
 {
     public function testGetCollection(): void
     {
-        static::createClient()->request('GET', '/api/{{ uri_base }}');
+        static::createClient()->request('GET', '/api/{{ uri_base }}'{% if required_query %}, ['query' => {{ required_query | raw }}]{% endif %});
 
         $this->assertResponseIsSuccessful();
         $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
@@ -109,7 +109,7 @@ final class {{ entity_name }}ApiTest extends ApiTestCase
     #[DataProvider('validFilterProvider')]
     public function testFilterIsAccepted(array $query): void
     {
-        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => $query]);
+        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => {% if required_query %}array_merge({{ required_query | raw }}, $query){% else %}$query{% endif %}]);
 
         $this->assertResponseIsSuccessful();
     }
@@ -135,7 +135,7 @@ final class {{ entity_name }}ApiTest extends ApiTestCase
     #[DataProvider('invalidFilterProvider')]
     public function testInvalidFilterIsRejected(array $query): void
     {
-        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => $query]);
+        static::createClient()->request('GET', '/api/{{ uri_base }}', ['query' => {% if required_query %}array_merge({{ required_query | raw }}, $query){% else %}$query{% endif %}]);
 
         $this->assertResponseStatusCodeSame(422);
     }

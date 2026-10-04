@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace __NS__\System\Filter;
+
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
+use ApiPlatform\Metadata\QueryParameter;
+
+/* Paramètre « status » de l'application (copie réduite de celui des API EasyTax). */
+final class StatusParameter extends QueryParameter
+{
+    public function __construct(bool $required = false)
+    {
+        parent::__construct(filter: new ExactFilter(), property: 'status', required: $required);
+    }
+}

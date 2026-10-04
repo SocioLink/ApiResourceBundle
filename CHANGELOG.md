@@ -8,6 +8,33 @@ Les ruptures de compatibilité sont signalées par **⚠ Rupture**.
 
 ## [Non publié]
 
+## [2.0.0] — 2026-10-04
+
+Version majeure : la forme du code généré change (voir « Migrer depuis 1.x » dans le [README](README.md#migrer-depuis-1x)).
+
+### Modifié
+
+- **⚠ Rupture** — Les filtres ne sont plus déclarés en `parameters: [...]` sur `#[ApiResource]` : chaque entité reçoit un
+  **catalogue de filtres** `<Entité>Filters` (classe de l'application, `Filters/<Sous-espace>/`) que `GetCollection` et
+  `QueryCollection` désignent par `extraProperties: ['collection_filters' => <Entité>Filters::class]`. C'est la façon de
+  déclarer les filtres des API EasyTax. Le code généré change de forme (nouveau fichier, entité allégée) ; une régénération
+  (`--force`) migre les entités existantes, écrase les catalogues existants et retire les imports devenus inutiles.
+- Un champ `status` produit `new StatusParameter(required: true)` et un champ `realm` (relation ToOne ou colonne `uuid`)
+  `new RealmParameter(required: true)`, au lieu d'un `QueryParameter` générique. Les tests générés (`--with-tests`) ajoutent
+  ces paramètres obligatoires à chaque requête de collection.
+- Une sous-ressource (`--sub-resources`) désigne le catalogue de l'entité enfant, généré au besoin.
+- `--only-resource` et `--all` génèrent aussi le catalogue (l'entité y renvoie).
+- Le catalogue n'est écrit que si l'injection dans l'entité a lieu : plus de fichier orphelin quand la ressource existe déjà.
+
+### Ajouté
+
+- Générateur de catalogue (`FilterCatalogueBuilder`, gabarit `filters.php.twig`, surchargeable comme les autres) ; un contrat
+  du même espace de noms que le catalogue n'est pas importé.
+- Configuration `filters.namespace`, `filters.catalogue_interface`, `filters.status_parameter` et `filters.realm_parameter` :
+  les classes du contrat, de `StatusParameter` et de `RealmParameter` appartiennent à l'application et se règlent
+  (défauts : `Filters`, `Filters\CollectionFiltersInterface`, `System\Filter\StatusParameter`, `System\Filter\RealmParameter`,
+  relatifs à `root_namespace`). Le bundle ne les génère pas : voir « Ce que l'application doit fournir » dans le README.
+
 ## [1.0.1] — 2026-10-01
 
 ### Modifié
@@ -50,6 +77,7 @@ Première version publiée. Les projets qui suivaient `dev-main` peuvent passer 
   (`uriTemplate : '…'`) : `--force` la remplace au lieu de la dupliquer.
 - `--force --reinit` retire les sous-ressources dont la relation n'existe plus sur l'entité.
 
-[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.1...HEAD
+[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/SocioLink/ApiResourceBundle/releases/tag/v1.0.0

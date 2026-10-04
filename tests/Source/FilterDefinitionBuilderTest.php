@@ -24,6 +24,7 @@
     namespace SocioLink\ApiResourceBundle\Tests\Source;
 
     use PHPUnit\Framework\TestCase;
+    use SocioLink\ApiResourceBundle\Source\GeneratorConfig;
     use SocioLink\ApiResourceBundle\Source\FilterDefinitionBuilder;
 
     /**
@@ -66,6 +67,7 @@
                 'file'      => $this->field('blob'),
                 'reference' => $this->field('uuid'),
                 'author'    => $this->field('App\Entity\Author', relation: true),
+                'realm'     => $this->field('App\Entity\Realm', relation: true),
                 'comments'  => $this->field('App\Entity\Comment', relation: true, toMany: true),
             ];
         }
@@ -78,7 +80,7 @@
 
             $this->assertSame('partial', $kinds['name']);
             $this->assertSame('partial', $kinds['code']);
-            $this->assertSame('exact', $kinds['status']); /* énumération : valeur fermée */
+            $this->assertSame('status', $kinds['status']); /* paramètre obligatoire de l'application, même pour une énumération */
             $this->assertSame('exact', $kinds['mobile']); /* type personnalisé : pas de LOWER(...) LIKE */
             $this->assertSame('boolean', $kinds['active']);
             $this->assertSame('numeric', $kinds['price']);
@@ -86,6 +88,7 @@
             $this->assertSame('date', $kinds['deletedAt']);
             $this->assertSame('uuid', $kinds['reference']);
             $this->assertSame('iri', $kinds['author']);
+            $this->assertSame('realm', $kinds['realm']); /* relation ToOne « realm » : paramètre obligatoire de l'application */
             $this->assertSame('exists', $kinds['exists[:property]']);
             $this->assertSame('sort', $kinds['order[:property]']);
         }
@@ -117,6 +120,58 @@
 
         public function testEntityWithoutFilterableFieldProducesNoDefinition(): void {
             $this->assertSame([], new FilterDefinitionBuilder()->buildDefinitions(['id' => $this->field('uuid')]));
+        }
+
+        public function testStatusAndRealmAreRenderedAsRequiredApplicationParameters(): void {
+            $builder = new FilterDefinitionBuilder();
+            $code    = implode("\n", $builder->renderParameters($builder->buildDefinitions($this->fields())));
+
+            $this->assertStringContainsString("'status' => new StatusParameter(required: true),", $code);
+            $this->assertStringContainsString("'realm' => new RealmParameter(required: true),", $code);
+            $this->assertStringNotContainsString("'status' => new QueryParameter", $code);
+            $this->assertStringNotContainsString("'realm' => new QueryParameter", $code);
+        }
+
+        public function testRealmColumnOfAnApiWithoutCoreIsTheSameRequiredParameter(): void {
+            $builder = new FilterDefinitionBuilder();
+            $defs    = $builder->buildDefinitions(['id' => $this->field('uuid'), 'realm' => $this->field('uuid')]);
+            $kinds   = array_column($defs, 'kind', 'key');
+
+            /* Taxing stocke le Realm dans une colonne uuid : même paramètre que la relation de Core, et triable comme une colonne. */
+            $this->assertSame('realm', $kinds['realm']);
+            $this->assertNotContains('uuid', $kinds);
+            $this->assertSame(['realm'], array_values(array_filter($defs, static fn(array $d): bool => $d['kind'] === 'sort'))[0]['properties']);
+            $this->assertSame(['realm' => '00000000-0000-7000-8000-000000000000'], $builder->buildRequiredQuery($defs));
+        }
+
+        public function testStatusAndRealmFollowTheConfiguredApplicationClasses(): void {
+            $config  = new GeneratorConfig('/tmp', rootNamespace: 'Acme', statusParameter: 'Http\\Status', realmParameter: 'Http\\Realm');
+            $builder = new FilterDefinitionBuilder($config);
+            $defs    = $builder->buildDefinitions($this->fields());
+
+            $this->assertContains('Acme\Http\Status', $builder->requiredFqcns($defs));
+            $this->assertContains('Acme\Http\Realm', $builder->requiredFqcns($defs));
+            $this->assertStringContainsString("'status' => new Status(required: true),", implode("\n", $builder->renderParameters($defs)));
+        }
+
+        public function testQueryParameterIsOnlyImportedWhenAParameterUsesIt(): void {
+            $builder = new FilterDefinitionBuilder();
+
+            /* Seule la relation realm est filtrable : la classe de l'application suffit, QueryParameter n'est pas utilisé. */
+            $this->assertSame(
+                ['App\System\Filter\RealmParameter'],
+                $builder->requiredFqcns($builder->buildDefinitions(['id' => $this->field('uuid'), 'realm' => $this->field('App\Entity\Realm', relation: true)])),
+            );
+        }
+
+        public function testRequiredQueryCarriesTheStatusAndRealmSamples(): void {
+            $builder  = new FilterDefinitionBuilder();
+            $required = $builder->buildRequiredQuery($builder->buildDefinitions($this->fields()));
+
+            /* status : première valeur de l'énumération ; realm : UUID d'exemple. */
+            $this->assertSame(['status' => 'draft', 'realm' => '00000000-0000-7000-8000-000000000000'], $required);
+            $this->assertSame(['status' => 'STATUS_ACTIVATE'], $builder->buildRequiredQuery($builder->buildDefinitions(['status' => $this->field('string')])));
+            $this->assertSame([], $builder->buildRequiredQuery($builder->buildDefinitions(['name' => $this->field('string')])));
         }
 
         /* ── Rendu ─── */
@@ -167,7 +222,7 @@
             $queries  = array_column($examples['valid'], 'query', 'label');
 
             $this->assertSame(['name' => 'test'], $queries['partial name']);
-            $this->assertSame(['status' => 'draft'], $queries['exact status']);
+            $this->assertArrayNotHasKey('exact status', $queries); /* status est un paramètre obligatoire : voir buildRequiredQuery() */
             $this->assertSame(['exists' => ['deletedAt' => 'true']], $queries['exists deletedAt']);
             $this->assertSame(['price' => ['gte' => '1']], $queries['numeric price gte']);
             $this->assertSame(['createdAt' => ['after' => '2020-01-01']], $queries['date createdAt after']);

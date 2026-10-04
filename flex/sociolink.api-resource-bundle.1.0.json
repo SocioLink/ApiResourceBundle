@@ -48,6 +48,10 @@
                         "        # filters:",
                         "        #     excluded_fields: []              # champs exclus des filtres et du tri",
                         "        #     sort_on_to_one_relations: false  # autorise order[author]=asc",
+                        "        #     namespace: Filters               # catalogues <Entité>Filters, relatif à root_namespace",
+                        "        #     catalogue_interface: Filters\\CollectionFiltersInterface   # contrat des catalogues (à fournir dans le projet)",
+                        "        #     status_parameter: System\\Filter\\StatusParameter           # paramètre status obligatoire (à fournir)",
+                        "        #     realm_parameter: System\\Filter\\RealmParameter             # paramètre realm obligatoire (à fournir)",
                         "        # templates_directory: null            # gabarits Twig prioritaires (surcharge)",
                         "",
                         "when@test: *sociolink_api_resource",
@@ -56,7 +60,7 @@
                     "executable": false
                 }
             },
-            "ref": "fbf4a3dab4bfe8a09854296d31dff585de230745"
+            "ref": "0fe7c6f2c95b6368d6f9b86bfec183795641b82b"
         }
     }
 }

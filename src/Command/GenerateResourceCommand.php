@@ -93,7 +93,7 @@
 				->addOption('force', 'f', InputOption::VALUE_NONE, 'Écrase les fichiers existants et réinjecte les attributs #[ApiResource].')
 				->addOption('reinit', 'r', InputOption::VALUE_NONE, 'Utilisé avec --force : supprime les répertoires DTO/ et State/ des entités traitées et leurs sous-ressources orphelines.')
 				/* ── Options mutuellement exclusives ─── */
-				->addOption('only-resource', 'o', InputOption::VALUE_NONE, 'Injecte #[ApiResource] + filtres uniquement.')
+				->addOption('only-resource', 'o', InputOption::VALUE_NONE, 'Injecte #[ApiResource] + catalogue de filtres uniquement.')
 				->addOption('with-provider', 'w', InputOption::VALUE_NONE, 'Génère un Provider pour GET {id}.')
 				->addOption('toggle-boolean', 't', InputOption::VALUE_NONE, 'Crée un ToggleDto + ToggleProcessor pour TOUS les booléens.')
 				->addOption('detach-boolean', 'd', InputOption::VALUE_NONE, 'Crée un DTO + Processor PATCH individuel par attribut booléen.')

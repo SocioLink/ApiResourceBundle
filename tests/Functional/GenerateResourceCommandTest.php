@@ -34,6 +34,7 @@
 	use libphonenumber\PhoneNumberFormat;
 	use PHPUnit\Framework\TestCase;
 	use ApiPlatform\Metadata\ApiResource;
+	use ApiPlatform\Metadata\QueryParameter;
 	use Symfony\Component\Filesystem\Filesystem;
 	use Symfony\Component\Console\Command\Command;
 	use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -63,7 +64,8 @@
 			self::$rootNamespace = 'E2e' . bin2hex(random_bytes(4));
 			self::$projectDir    = str_replace('\\', '/', sys_get_temp_dir()) . '/sociolink_e2e_' . bin2hex(random_bytes(4));
 
-			foreach (['Entity', 'Enum'] as $dir) {
+			/* Entités, énumérations et classes de support de l'application (contrat des catalogues, StatusParameter, RealmParameter). */
+			foreach (['Entity', 'Enum', 'Filters', 'System/Filter'] as $dir) {
 				foreach (glob(__DIR__ . "/Fixtures/{$dir}/*.php.dist") ?: [] as $fixture) {
 					new Filesystem()->dumpFile(
 						self::$projectDir . "/src/{$dir}/" . basename($fixture, '.dist'),
@@ -147,7 +149,7 @@
 		public function testEveryGeneratedClassLoads(): void {
 			$loaded = 0;
 
-			foreach (['src/DTO', 'src/State', 'tests/Functional'] as $dir) {
+			foreach (['src/DTO', 'src/State', 'src/Filters', 'tests/Functional'] as $dir) {
 				$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::$projectDir . '/' . $dir, RecursiveDirectoryIterator::SKIP_DOTS));
 
 				foreach ($iterator as $file) {
@@ -155,7 +157,7 @@
 					$class    = self::$rootNamespace . '\\' . str_replace('/', '\\', (string)preg_replace(['#^src/#', '#^tests/#', '#\.php$#'], ['', 'Tests/', ''], $relative));
 
 					/* Le chargement vérifie la syntaxe, les imports et la compatibilité des signatures (ProcessorInterface…). */
-					$this->assertTrue(class_exists($class), "Classe générée non chargeable : {$class} ({$relative})");
+					$this->assertTrue(class_exists($class) || interface_exists($class), "Classe générée non chargeable : {$class} ({$relative})");
 
 					/* Mise en forme : ni double ligne vide, ni ligne vide avant une accolade fermante. */
 					$code = (string)file_get_contents($file->getPathname());
@@ -225,14 +227,77 @@
 			$this->assertStringNotContainsString('phone_number', self::$runs['article']['display'], 'phone_number ne doit plus être signalé comme non reconnu.');
 		}
 
-		public function testStringFieldsGetAPartialFilterButEnumsAndCustomTypesStayExact(): void {
-			$entity = self::src('Entity/Article.php');
+		public function testStringFieldsGetAPartialFilterButCustomTypesStayExactInTheCatalogue(): void {
+			$filters = self::src('Filters/ArticleFilters.php');
 
-			$this->assertStringContainsString('parameters: [', $entity);
-			$this->assertStringContainsString("'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),", $entity);
-			$this->assertStringContainsString("'status' => new QueryParameter(filter: new ExactFilter(), property: 'status'),", $entity);
-			$this->assertStringContainsString("'mobile' => new QueryParameter(filter: new ExactFilter(), property: 'mobile'),", $entity);
-			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;', $entity);
+			$this->assertStringContainsString('final class ArticleFilters implements CollectionFiltersInterface', $filters);
+			$this->assertStringContainsString("'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),", $filters);
+			$this->assertStringContainsString("'mobile' => new QueryParameter(filter: new ExactFilter(), property: 'mobile'),", $filters);
+			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;', $filters);
+		}
+
+		public function testStatusIsTheRequiredApplicationParameterEvenForAnEnum(): void {
+			$filters = self::src('Filters/ArticleFilters.php');
+
+			$this->assertStringContainsString("'status' => new StatusParameter(required: true),", $filters);
+			$this->assertStringContainsString('use ' . self::$rootNamespace . '\\System\\Filter\\StatusParameter;', $filters);
+			$this->assertStringNotContainsString("'status' => new QueryParameter", $filters);
+			/* Le contrat est dans le même espace de noms que le catalogue : il n'est pas importé. */
+			$this->assertStringNotContainsString('CollectionFiltersInterface;', self::src('Filters/CommentFilters.php'));
+			$this->assertStringContainsString('implements CollectionFiltersInterface', self::src('Filters/CommentFilters.php'));
+		}
+
+		public function testRealmRelationIsTheRequiredApplicationParameter(): void {
+			$filters = self::src('Filters/CategoryFilters.php');
+
+			$this->assertStringContainsString("'realm' => new RealmParameter(required: true),", $filters);
+			$this->assertStringContainsString('use ' . self::$rootNamespace . '\\System\\Filter\\RealmParameter;', $filters);
+			$this->assertStringNotContainsString("'realm' => new QueryParameter", $filters);
+		}
+
+		public function testEntitiesReferenceTheirCatalogueAndDeclareNoParameters(): void {
+			foreach (['Article', 'Comment', 'Author', 'Category'] as $entity) {
+				$source = self::src("Entity/{$entity}.php");
+
+				$this->assertStringNotContainsString('parameters: [', $source, $entity);
+				$this->assertStringContainsString("new GetCollection(extraProperties: ['collection_filters' => {$entity}Filters::class])", $source, $entity);
+				$this->assertStringContainsString("new QueryCollection(paginationType: 'page', extraProperties: ['collection_filters' => {$entity}Filters::class])", $source, $entity);
+				$this->assertStringContainsString('use ' . self::$rootNamespace . "\\Filters\\{$entity}Filters;", $source, $entity);
+				$this->assertFileExists(self::$projectDir . "/src/Filters/{$entity}Filters.php", $entity);
+			}
+		}
+
+		public function testEveryGeneratedCatalogueReturnsQueryParameters(): void {
+			foreach (['Article', 'Comment', 'Author', 'Category'] as $entity) {
+				$catalogue  = self::$rootNamespace . "\\Filters\\{$entity}Filters";
+				$parameters = new $catalogue()->parameters();
+
+				$this->assertNotEmpty($parameters, $entity);
+				$this->assertArrayHasKey('order[:property]', $parameters, $entity);
+
+				foreach ($parameters as $key => $parameter) {
+					$this->assertIsString($key);
+					$this->assertInstanceOf(QueryParameter::class, $parameter, "{$entity} : {$key}");
+				}
+			}
+
+			$this->assertTrue(new (self::$rootNamespace . '\\Filters\\ArticleFilters')()->parameters()['status']->getRequired());
+		}
+
+		public function testCatalogueIsNotWrittenWhenTheEntityIsSkipped(): void {
+			$catalogue = self::$projectDir . '/src/Filters/CategoryFilters.php';
+			$backup    = (string)file_get_contents($catalogue);
+
+			unlink($catalogue);
+			$run = self::runCommand(['entity' => 'Category', '--only-resource' => true]);
+
+			try {
+				$this->assertSame(Command::SUCCESS, $run['status'], $run['display']);
+				$this->assertFileDoesNotExist($catalogue, 'Ressource déjà présente sans --force : aucun catalogue orphelin ne doit être écrit.');
+			}
+			finally {
+				file_put_contents($catalogue, $backup);
+			}
 		}
 
 		public function testPhoneNumberPayloadIsDenormalizedIntoTheGeneratedDtos(): void {
@@ -265,8 +330,9 @@
 		public function testGeneratedTestUsesAllowedEnumValues(): void {
 			$test = (string)file_get_contents(self::$projectDir . '/tests/Functional/Article/ArticleApiTest.php');
 
-			/* status est un champ système (absent du POST), mais son filtre est testé avec une valeur autorisée. */
-			$this->assertStringContainsString("[['status' => 'draft']]", $test);
+			/* status est un champ système (absent du POST), mais il est obligatoire sur la collection : valeur autorisée de l'énumération. */
+			$this->assertStringContainsString("request('GET', '/api/articles', ['query' => ['status' => 'draft']]);", $test);
+			$this->assertStringContainsString("['query' => array_merge(['status' => 'draft'], \$query)]", $test);
 			$this->assertStringContainsString("'price' => '1.50',", $test);
 		}
 

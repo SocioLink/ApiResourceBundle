@@ -97,6 +97,27 @@
 		}
 
 		/*
+		 * Espace de noms du catalogue de filtres de l'entité : le sous-espace de l'entité sous l'espace de noms des
+		 * filtres, SANS le nom de l'entité (un dossier de catalogues est partagé par les entités d'un même sous-espace).
+		 *
+		 * Exemple : 'App\Entity\Blog\Article' → 'App\Filters\Blog' ; 'App\Entity\Article' → 'App\Filters'
+		 */
+		public function getFilterNamespace(string $entityClass): string {
+			$sub = $this->getSubPath($entityClass);
+
+			return $sub !== '' ? "{$this->config->filterNamespace}\\{$sub}" : $this->config->filterNamespace;
+		}
+
+		/*
+		 * FQCN du catalogue de filtres de l'entité.
+		 *
+		 * Exemple : 'App\Entity\Blog\Article' → 'App\Filters\Blog\ArticleFilters'
+		 */
+		public function getFilterClass(string $entityClass): string {
+			return $this->getFilterNamespace($entityClass) . '\\' . $this->getShortClassName($entityClass) . 'Filters';
+		}
+
+		/*
 		 * Espace de noms des tests fonctionnels de l'entité.
 		 *
 		 * Exemple : 'App\Entity\Blog\Article' → 'App\Tests\Functional\Blog\Article'
@@ -121,6 +142,15 @@
 		 */
 		public function entityFilePath(string $entityClass): string {
 			return $this->namespaceToDir($entityClass) . '.php';
+		}
+
+		/*
+		 * Chemin absolu du fichier du catalogue de filtres de l'entité.
+		 *
+		 * Exemple : 'App\Entity\Blog\Article' → '/projet/src/Filters/Blog/ArticleFilters.php'
+		 */
+		public function filterFilePath(string $entityClass): string {
+			return $this->namespaceToDir($this->getFilterClass($entityClass)) . '.php';
 		}
 
 		/*

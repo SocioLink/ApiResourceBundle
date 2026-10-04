@@ -24,6 +24,10 @@ when@dev: &sociolink_api_resource
         # filters:
         #     excluded_fields: []              # champs exclus des filtres et du tri
         #     sort_on_to_one_relations: false  # autorise order[author]=asc
+        #     namespace: Filters               # catalogues <Entité>Filters, relatif à root_namespace
+        #     catalogue_interface: Filters\CollectionFiltersInterface   # contrat des catalogues (à fournir dans le projet)
+        #     status_parameter: System\Filter\StatusParameter           # paramètre status obligatoire (à fournir)
+        #     realm_parameter: System\Filter\RealmParameter             # paramètre realm obligatoire (à fournir)
         # templates_directory: null            # gabarits Twig prioritaires (surcharge)
 
 when@test: *sociolink_api_resource

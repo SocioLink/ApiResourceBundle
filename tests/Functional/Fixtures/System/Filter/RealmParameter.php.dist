@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace __NS__\System\Filter;
+
+use ApiPlatform\Doctrine\Orm\Filter\IriFilter;
+use ApiPlatform\Metadata\QueryParameter;
+
+/* Paramètre « realm » de l'application (copie réduite de celui des API EasyTax). */
+final class RealmParameter extends QueryParameter
+{
+    public function __construct(bool $required = false)
+    {
+        parent::__construct(filter: new IriFilter(), property: 'realm', required: $required);
+    }
+}
