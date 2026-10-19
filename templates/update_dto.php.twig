@@ -14,6 +14,9 @@ namespace {{ namespace }};
  * null = champ non modifié. L'UpdateProcessor applique uniquement les valeurs non nulles.
  * Inclut le champ 'status' si présent.{{ soft_note }}
  *
+ * Chaque propriété porte #[ApiProperty(description: '')] : compléter la description (en français) d'après
+ * la feuille de route front. Une description vide est refusée par le test d'architecture de l'API.
+ *
  * @see {{ entity_name }}UpdateProcessor
  */
 class {{ entity_name }}UpdateDto

@@ -8,6 +8,17 @@ Les ruptures de compatibilité sont signalées par **⚠ Rupture**.
 
 ## [Non publié]
 
+## [2.1.0] — 2026-10-20
+
+### Ajouté
+
+- Chaque propriété des DTO générés (création, mise à jour, bascule de booléens, DTO individuel par booléen) reçoit
+  l'attribut `#[ApiProperty(description: '')]`, avec l'import `ApiPlatform\Metadata\ApiProperty`. La description, en
+  français, est laissée **vide**, à compléter d'après la feuille de route front (référence API, une fiche par ressource).
+  Un test d'architecture côté application (qui refuse une description vide) garantit ainsi que tout nouveau DTO est
+  documenté avant d'être exposé. L'attribut est préfixé aux éventuelles contraintes `#[Assert\*]` déjà recopiées, sans
+  les modifier.
+
 ## [2.0.0] — 2026-10-04
 
 Version majeure : la forme du code généré change (voir « Migrer depuis 1.x » dans le [README](README.md#migrer-depuis-1x)).

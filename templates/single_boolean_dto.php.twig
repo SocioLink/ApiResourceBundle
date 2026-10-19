@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace {{ namespace }};
 
+use ApiPlatform\Metadata\ApiProperty;
+
 /**
  * DTO de mise à jour pour le champ '{{ field_name }}' de l'entité {{ entity_name }}.
  * Endpoint : PATCH /{{ uri_name }}/{id}/{{ uri_segment }}.
@@ -12,5 +14,6 @@ namespace {{ namespace }};
  */
 class {{ entity_name }}{{ pascal_name }}Dto
 {
+    #[ApiProperty(description: '')]
     public bool|null ${{ field_name }} = null;
 }

@@ -213,6 +213,19 @@
 			$this->assertStringContainsString('public string|null $reference = null;', $dto); /* guid : chaîne côté Doctrine */
 		}
 
+		public function testDtosCarryAnApiPropertyScaffoldOnEveryProperty(): void {
+			/* Chaque propriété de DTO reçoit #[ApiProperty(description: '')] : la description, en français, est à
+			 * compléter d'après la feuille de route front. Le test d'architecture de l'API refuse une description vide. */
+			$create = self::src('DTO/Article/ArticleCreateDto.php');
+			$update = self::src('DTO/Article/ArticleUpdateDto.php');
+
+			$this->assertStringContainsString('use ApiPlatform\Metadata\ApiProperty;', $create);
+			$this->assertStringContainsString("#[ApiProperty(description: '')]", $create);
+			$this->assertStringContainsString("#[ApiProperty(description: '')]\n    public string \$price;", $create);
+			$this->assertStringContainsString('use ApiPlatform\Metadata\ApiProperty;', $update);
+			$this->assertStringContainsString("#[ApiProperty(description: '')]", $update);
+		}
+
 		public function testPhoneNumberTypeIsTypedAsPhoneNumberEverywhere(): void {
 			/* Un DTO typé string ferait échouer le setter de l'entité (TypeError) : le DTO doit porter l'objet hydraté. */
 			$create = self::src('DTO/Article/ArticleCreateDto.php');

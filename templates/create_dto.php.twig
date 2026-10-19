@@ -14,6 +14,9 @@ namespace {{ namespace }};
  * Expose les champs autorisés à la création. Les champs système
  * et les associations ToMany sont exclus.
  *
+ * Chaque propriété porte #[ApiProperty(description: '')] : compléter la description (en français) d'après
+ * la feuille de route front. Une description vide est refusée par le test d'architecture de l'API.
+ *
  * @see {{ entity_name }}CreateProcessor
  */
 class {{ entity_name }}CreateDto

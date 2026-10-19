@@ -151,7 +151,7 @@
 						$attrBlock .= "\n";
 					}
 
-					$props[] = "{$attrBlock}    public {$typeHint} \${$fieldName}{$default};\n";
+					$props[] = self::API_PROPERTY_LINE . "{$attrBlock}    public {$typeHint} \${$fieldName}{$default};\n";
 					continue;
 				}
 
@@ -179,14 +179,14 @@
 				$typeHint = $info['nullable'] ? "{$phpType}|null" : $phpType;
 				$default  = $info['nullable'] ? ' = null' : '';
 
-				$props[] = ($attrBlock) . "    public {$typeHint} \${$fieldName}{$default};\n";
+				$props[] = self::API_PROPERTY_LINE . ($attrBlock) . "    public {$typeHint} \${$fieldName}{$default};\n";
 			}
 
 			if ($needsEntityImport) {
 				$uses[] = 'use ' . $entityClass . ';';
 			}
 
-			$usesBlock  = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid);
+			$usesBlock  = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid, $props !== []);
 			$propsBlock = rtrim(implode("\n", $props));
 
 			return $this->twig->render('create_dto.php.twig', [
@@ -291,7 +291,7 @@
 					 * Envoyer explicitement null pour effacer une valeur n'est pas supporté
 					 * par ce design (limitation connue et acceptée du PATCH "simple").
 					 */
-					$props[] = ($attrBlock) . "    public {$target}|null \${$fieldName} = null;\n";
+					$props[] = self::API_PROPERTY_LINE . ($attrBlock) . "    public {$target}|null \${$fieldName} = null;\n";
 					continue;
 				}
 
@@ -310,7 +310,7 @@
 					$attrBlock .= "\n";
 				}
 
-				$props[] = ($attrBlock) . "    public {$phpType}|null \${$fieldName} = null;\n";
+				$props[] = self::API_PROPERTY_LINE . ($attrBlock) . "    public {$phpType}|null \${$fieldName} = null;\n";
 			}
 
 			/* ── Status : toujours dans UpdateDto si le champ existe ─────────────── */
@@ -319,14 +319,14 @@
 				$needsDt    = $needsDt || $statusType === 'DateTimeImmutable';
 				$needsUuid  = $needsUuid || $statusType === 'Uuid';
 				array_push($uses, ...$this->customTypeUses($fields['status']['doctrineType']));
-				$props[] = "    public {$statusType}|null \$status = null;\n";
+				$props[] = self::API_PROPERTY_LINE . "    public {$statusType}|null \$status = null;\n";
 			}
 
 			if ($needsEntityImport) {
 				$uses[] = 'use ' . $entityClass . ';';
 			}
 
-			$usesBlock  = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid);
+			$usesBlock  = $this->buildUsesBlock($uses, $needsDt, $needsAssert, $needsUuid, $props !== []);
 			$propsBlock = rtrim(implode("\n", $props));
 
 			$softNote = $options->includesSoftDeleteInUpdate()
@@ -365,7 +365,7 @@
 			 * le même principe de "PATCH partiel" que l'UpdateDto, mais appliqué exclusivement
 			 * aux booléens (ce qui permet de basculer plusieurs flags en un seul appel).
 			 */
-			$props      = array_map(static fn(string $f): string => "    public bool|null \${$f} = null;", array_keys($booleanFields));
+			$props      = array_map(static fn(string $f): string => self::API_PROPERTY_LINE . "    public bool|null \${$f} = null;", array_keys($booleanFields));
 			$propsBlock = implode("\n\n", $props);
 
 			return $this->twig->render('toggle_dto.php.twig', [
@@ -615,7 +615,19 @@
 		 *
 		 * @return string Bloc use (sans retour à la ligne final), ou chaîne vide
 		 */
-		private function buildUsesBlock(array $uses, bool $needsDt, bool $needsAssert, bool $needsUuid = false): string {
+		/**
+		 * Attribut #[ApiProperty] préfixé à chaque propriété de DTO : la description (en français) et l'exemple sont
+		 * laissés VIDES, à compléter d'après la feuille de route front (§4 Core / §5 Taxing). Un test d'architecture
+		 * côté API refuse une description vide, ce qui garantit que tout nouveau DTO est documenté avant d'être exposé.
+		 */
+		private const string API_PROPERTY_LINE = "    #[ApiProperty(description: '')]\n";
+
+		private function buildUsesBlock(array $uses, bool $needsDt, bool $needsAssert, bool $needsUuid = false, bool $needsApiProperty = false): string {
+			/* ApiProperty : importé dès qu'au moins une propriété porte l'attribut (toujours le cas pour un DTO non vide). */
+			if ($needsApiProperty) {
+				$uses[] = 'use ApiPlatform\\Metadata\\ApiProperty;';
+			}
+
 			/* DateTimeImmutable n'est ajouté que si au moins un champ date/datetime a été rencontré pendant la boucle d'appel — éviter un import mort dans les DTOs sans champ temporel. Le type property est DateTimeImmutable (déterminé par FieldAnalyser::toPhpType()), donc l'import doit correspondre. */
 			if ($needsDt) {
 				$uses[] = 'use DateTimeImmutable;';
