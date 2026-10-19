@@ -8,6 +8,17 @@ Les ruptures de compatibilité sont signalées par **⚠ Rupture**.
 
 ## [Non publié]
 
+## [2.2.0] — 2026-10-20
+
+### Ajouté
+
+- Chaque paramètre de filtrage généré dans un catalogue `<Entité>Filters` reçoit l'argument `description: ''` sur son
+  `QueryParameter`, la description (en français) étant laissée **vide**, à compléter d'après la feuille de route front
+  (une fiche par collection). Les paramètres système `status` et `realm` (classes de l'application) en sont dispensés.
+  Un test d'architecture côté application (qui refuse une description vide) garantit ainsi que tout nouveau filtre est
+  documenté avant d'être exposé. Prolonge à la couche filtres le scaffold `#[ApiProperty(description: '')]` des DTO
+  introduit en [2.1.0].
+
 ## [2.1.0] — 2026-10-20
 
 ### Ajouté
@@ -88,7 +99,9 @@ Première version publiée. Les projets qui suivaient `dev-main` peuvent passer 
   (`uriTemplate : '…'`) : `--force` la remplace au lieu de la dupliquer.
 - `--force --reinit` retire les sous-ressources dont la relation n'existe plus sur l'entité.
 
-[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v2.0.0...HEAD
+[Non publié]: https://github.com/SocioLink/ApiResourceBundle/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/SocioLink/ApiResourceBundle/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/SocioLink/ApiResourceBundle/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/SocioLink/ApiResourceBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/SocioLink/ApiResourceBundle/releases/tag/v1.0.0

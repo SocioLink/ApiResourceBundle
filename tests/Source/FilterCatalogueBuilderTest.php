@@ -71,7 +71,7 @@
 			$this->assertStringContainsString('use App\Filters\CollectionFiltersInterface;', $code);
 			$this->assertStringContainsString('use App\System\Filter\StatusParameter;', $code);
 			$this->assertStringContainsString('use App\System\Filter\RealmParameter;', $code);
-			$this->assertStringContainsString("'headLine' => new QueryParameter(filter: new PartialSearchFilter(), property: 'headLine'),", $code);
+			$this->assertStringContainsString("'headLine' => new QueryParameter(description: '', filter: new PartialSearchFilter(), property: 'headLine'),", $code);
 			$this->assertStringContainsString("'status' => new StatusParameter(required: true),", $code);
 			$this->assertStringContainsString("'realm' => new RealmParameter(required: true),", $code);
 			$this->assertStringContainsString("'order[:property]' => new QueryParameter(", $code);

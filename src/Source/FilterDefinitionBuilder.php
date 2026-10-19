@@ -265,23 +265,23 @@
 					'status'                                  => ["{$key} => new {$this->shortName($this->statusClass())}(required: true),"],
 					'realm'                                   => ["{$key} => new {$this->shortName($this->realmClass())}(required: true),"],
 					'partial', 'exact', 'uuid', 'date', 'iri' => [
-						"{$key} => new QueryParameter(filter: new " . self::KIND_TO_FILTER[$definition['kind']] . "(), property: {$prop}),",
+						"{$key} => new QueryParameter(description: '', filter: new " . self::KIND_TO_FILTER[$definition['kind']] . "(), property: {$prop}),",
 					],
 					'boolean'                                 => [
 						"{$key} => new QueryParameter(",
-						"    schema: ['type' => 'boolean'],", '    filter: new ExactFilter(),',
+						"    description: '',", "    schema: ['type' => 'boolean'],", '    filter: new ExactFilter(),',
 						"    property: {$prop},", '    castToArray: false,', '    castToNativeType: true,',
 						'),',
 					],
 					'numeric'                                 => [
 						"{$key} => new QueryParameter(",
-						'    filter: new ChainFilter([new ExactFilter(), new ComparisonFilter(new ExactFilter())]),',
+						"    description: '',", '    filter: new ChainFilter([new ExactFilter(), new ComparisonFilter(new ExactFilter())]),',
 						"    property: {$prop},",
 						'),',
 					],
 					'exists', 'sort'                          => [
 						"{$key} => new QueryParameter(",
-						'    filter: new ' . ($definition['kind'] === 'exists' ? 'ExistsFilter' : 'SortFilter') . '(),',
+						"    description: '',", '    filter: new ' . ($definition['kind'] === 'exists' ? 'ExistsFilter' : 'SortFilter') . '(),',
 						'    properties: [' . implode(', ', array_map($this->quote(...), $definition['properties'])) . '],',
 						'),',
 					],

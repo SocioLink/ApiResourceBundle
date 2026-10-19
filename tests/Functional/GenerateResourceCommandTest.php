@@ -244,9 +244,21 @@
 			$filters = self::src('Filters/ArticleFilters.php');
 
 			$this->assertStringContainsString('final class ArticleFilters implements CollectionFiltersInterface', $filters);
-			$this->assertStringContainsString("'title' => new QueryParameter(filter: new PartialSearchFilter(), property: 'title'),", $filters);
-			$this->assertStringContainsString("'mobile' => new QueryParameter(filter: new ExactFilter(), property: 'mobile'),", $filters);
+			$this->assertStringContainsString("'title' => new QueryParameter(description: '', filter: new PartialSearchFilter(), property: 'title'),", $filters);
+			$this->assertStringContainsString("'mobile' => new QueryParameter(description: '', filter: new ExactFilter(), property: 'mobile'),", $filters);
 			$this->assertStringContainsString('use ApiPlatform\Doctrine\Orm\Filter\PartialSearchFilter;', $filters);
+		}
+
+		public function testFilterCataloguesCarryADescriptionScaffoldOnEveryQueryParameter(): void {
+			/* Chaque QueryParameter généré porte description: '' : la description, en français, est à compléter
+			 * d'après la feuille de route front. Le test d'architecture de l'API refuse une description vide.
+			 * Les paramètres système status et realm (classes de l'application) en sont dispensés. */
+			$filters = self::src('Filters/ArticleFilters.php');
+
+			$this->assertStringContainsString("new QueryParameter(description: '', filter:", $filters);
+			$this->assertStringNotContainsString('new QueryParameter(filter:', $filters);
+			$this->assertMatchesRegularExpression("/new QueryParameter\(\s*\n\s*description: '',/", $filters);
+			$this->assertStringContainsString("'status' => new StatusParameter(required: true),", $filters);
 		}
 
 		public function testStatusIsTheRequiredApplicationParameterEvenForAnEnum(): void {

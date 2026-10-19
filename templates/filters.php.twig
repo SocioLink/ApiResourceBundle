@@ -11,6 +11,9 @@ namespace {{ namespace }};
  *
  * Relié à GetCollection et QueryCollection de l'entité par
  * `extraProperties: ['collection_filters' => {{ entity_name }}Filters::class]`.
+ *
+ * Chaque QueryParameter porte description: '' : compléter la description (en français) d'après la feuille de route
+ * front. Une description vide est refusée par le test d'architecture de l'API ; status et realm en sont dispensés.
  * Fichier généré par `generate:resource` : le régénérer avec --force écrase les personnalisations.
  */
 final class {{ entity_name }}Filters implements {{ interface_name }}

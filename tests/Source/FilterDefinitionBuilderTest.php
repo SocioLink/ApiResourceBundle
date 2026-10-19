@@ -184,7 +184,7 @@
             /* TOKEN_PARSE lève une ParseError si le code généré est syntaxiquement invalide. */
             $this->assertNotEmpty(token_get_all($code, TOKEN_PARSE));
 
-            $this->assertStringContainsString("'name' => new QueryParameter(filter: new PartialSearchFilter(), property: 'name'),", $code);
+            $this->assertStringContainsString("'name' => new QueryParameter(description: '', filter: new PartialSearchFilter(), property: 'name'),", $code);
             $this->assertStringContainsString("filter: new ChainFilter([new ExactFilter(), new ComparisonFilter(new ExactFilter())]),", $code);
             $this->assertStringContainsString("schema: ['type' => 'boolean'],", $code);
             $this->assertStringContainsString("'exists[:property]' => new QueryParameter(", $code);
